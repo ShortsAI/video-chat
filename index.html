@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PeerRoom — Instant Video Chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0b0d11;
+      --surface:   #13161d;
+      --surface2:  #1c2029;
+      --border:    #252a35;
+      --accent:    #00e5a0;
+      --accent2:   #0099ff;
+      --danger:    #ff4466;
+      --text:      #e8eaf0;
+      --muted:     #6b7280;
+      --radius:    12px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      overflow: hidden;
+    }
+
+    /* ── LOBBY ── */
+    #lobby {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg);
+      z-index: 100;
+      animation: fadeIn .4s ease;
+    }
+
+    .lobby-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 40px;
+      width: 460px;
+      max-width: 95vw;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .lobby-card::before {
+      content: '';
+      position: absolute;
+      top: -60px; left: -60px;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(0,229,160,.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .lobby-card::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; right: -40px;
+      width: 160px; height: 160px;
+      background: radial-gradient(circle, rgba(0,153,255,.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .logo {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 24px;
+    }
+
+    .lobby-card h1 {
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 10px;
+    }
+
+    .lobby-card p {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .info-box {
+      background: rgba(0,229,160,.08);
+      border: 1px solid rgba(0,229,160,.2);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 24px;
+      font-size: 12px;
+      line-height: 1.55;
+      color: var(--text);
+    }
+
+    .info-box strong { color: var(--accent); }
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 7px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 15px;
+      padding: 13px 16px;
+      outline: none;
+      transition: border-color .2s;
+      margin-bottom: 16px;
+    }
+
+    input[type="text"]:focus { border-color: var(--accent); }
+    input[type="text"]::placeholder { color: var(--muted); }
+
+    .btn-join {
+      width: 100%;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 14px;
+      cursor: pointer;
+      letter-spacing: .04em;
+      transition: transform .15s, opacity .15s;
+      margin-top: 4px;
+    }
+    .btn-join:hover { opacity: .88; transform: translateY(-1px); }
+    .btn-join:active { transform: translateY(0); }
+
+    /* ── MAIN APP ── */
+    #app {
+      display: none;
+      height: 100vh;
+      flex-direction: column;
+    }
+    #app.visible { display: flex; }
+
+    /* Header */
+    .app-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px;
+      height: 52px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .app-header .logo { margin: 0; font-size: 12px; }
+    .room-tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 10px;
+      color: var(--muted);
+    }
+    .header-spacer { flex: 1; }
+    .user-count {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+    }
+
+    /* Main layout */
+    .main-layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Video grid */
+    .video-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    #video-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 10px;
+      padding: 14px;
+      overflow-y: auto;
+      align-content: start;
+    }
+
+    .video-tile {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      aspect-ratio: 16/9;
+      animation: tileIn .3s ease;
+    }
+
+    @keyframes tileIn {
+      from { opacity: 0; transform: scale(.96); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .video-tile video {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .video-tile .tile-label {
+      position: absolute;
+      bottom: 10px; left: 12px;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(8px);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .video-tile.local { border-color: var(--accent); }
+    .video-tile.local .tile-label::after { content: ' (you)'; color: var(--accent); }
+
+    /* Controls bar */
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 14px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .ctrl-btn {
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .2s, border-color .2s, transform .15s;
+    }
+    .ctrl-btn:hover { background: var(--border); transform: scale(1.08); }
+    .ctrl-btn.off { background: rgba(255,68,102,.15); border-color: var(--danger); color: var(--danger); }
+    .ctrl-btn.leave { background: var(--danger); border-color: var(--danger); color: #fff; }
+    .ctrl-btn.leave:hover { opacity: .85; }
+
+    /* Chat panel */
+    .chat-panel {
+      width: 300px;
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .chat-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    #chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scroll-behavior: smooth;
+    }
+
+    #chat-messages::-webkit-scrollbar { width: 4px; }
+    #chat-messages::-webkit-scrollbar-track { background: transparent; }
+    #chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .msg {
+      animation: fadeIn .2s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .msg .msg-meta {
+      display: flex; align-items: baseline; gap: 8px;
+      margin-bottom: 3px;
+    }
+    .msg .msg-name {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      color: var(--accent);
+    }
+    .msg.self .msg-name { color: var(--accent2); }
+
+    .msg .msg-time {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .msg .msg-text {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .system-msg {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      font-style: italic;
+      animation: fadeIn .3s ease;
+    }
+
+    .chat-input-area {
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+    }
+
+    #chat-input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    #chat-input:focus { border-color: var(--accent); }
+    #chat-input::placeholder { color: var(--muted); }
+
+    .send-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: #000;
+      font-size: 16px;
+      width: 38px;
+      cursor: pointer;
+      transition: opacity .15s, transform .15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .send-btn:hover { opacity: .85; transform: scale(1.05); }
+
+    /* Users list */
+    .users-list {
+      padding: 0 14px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .user-pill {
+      font-size: 11px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 10px;
+      color: var(--text);
+    }
+    .user-pill.me { border-color: var(--accent); color: var(--accent); }
+
+    @media (max-width: 640px) {
+      .chat-panel { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── LOBBY ── -->
+<div id="lobby">
+  <div class="lobby-card">
+    <div class="logo">⬡ PeerRoom</div>
+    <h1>Jump in.<br/>No signup needed.</h1>
+    <p>Instant video &amp; text chat. Open in multiple tabs to test!</p>
+
+    <div class="info-box">
+      <strong>🧪 Local Testing:</strong> Open this file in 2+ browser tabs. Enter the same room name but different usernames. The tabs will connect via WebRTC!
+    </div>
+
+    <label for="name-input">Your name</label>
+    <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off" />
+
+    <label for="room-input">Room ID</label>
+    <input id="room-input" type="text" placeholder="e.g. test-room" maxlength="40" autocomplete="off" />
+
+    <button class="btn-join" onclick="joinRoom()">Enter Room →</button>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="app">
+  <header class="app-header">
+    <div class="logo">⬡ PeerRoom</div>
+    <div class="room-tag" id="room-display"></div>
+    <div class="header-spacer"></div>
+    <div class="user-count"><span class="dot"></span> <span id="user-count-label">1 person</span></div>
+  </header>
+
+  <div class="main-layout">
+    <!-- Video -->
+    <div class="video-area">
+      <div id="video-grid"></div>
+      <div class="controls">
+        <button class="ctrl-btn" id="btn-mic" title="Toggle mic" onclick="toggleMic()">🎙️</button>
+        <button class="ctrl-btn" id="btn-cam" title="Toggle camera" onclick="toggleCam()">📷</button>
+        <button class="ctrl-btn leave" title="Leave room" onclick="leaveRoom()">📞</button>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="chat-panel">
+      <div class="chat-header">💬 Chat</div>
+      <div id="chat-messages"></div>
+
+      <div id="users-area" style="border-top:1px solid var(--border); padding:10px 14px 0;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">In room</div>
+        <div class="users-list" id="users-list"></div>
+      </div>
+
+      <div class="chat-input-area">
+        <input id="chat-input" type="text" placeholder="Say something…" maxlength="500"
+               onkeydown="if(event.key==='Enter') sendChat()" />
+        <button class="send-btn" onclick="sendChat()">➤</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════════
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+let myName = '';
+let myRoomId = '';
+let myUserId = '';
+let localStream = null;
+
+// peers: { userId -> { pc: RTCPeerConnection, name: string } }
+const peers = {};
+const processedMessages = new Set(); // Track processed message IDs
+
+let micOn = true;
+let camOn = true;
+
+// ═══════════════════════════════════════════════════════════════════
+// JOIN ROOM
+// ═══════════════════════════════════════════════════════════════════
+async function joinRoom() {
+  const name = document.getElementById('name-input').value.trim();
+  const roomId = document.getElementById('room-input').value.trim().replace(/\s+/g, '-').toLowerCase() || 'general';
+
+  if (!name) {
+    alert('Please enter your name.');
+    return;
+  }
+
+  myName = name;
+  myRoomId = roomId;
+  myUserId = 'user-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
+
+  // Update URL
+  location.hash = roomId;
+  document.getElementById('room-display').textContent = '# ' + roomId;
+
+  // Show app
+  document.getElementById('lobby').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+
+  // Get local media
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  } catch (e) {
+    console.warn('Media access denied:', e);
+    alert('Camera/mic access denied. You\'ll join audio-only.');
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e2) {
+      localStream = new MediaStream();
+    }
+  }
+
+  addVideoTile('local', myName, localStream, true);
+
+  // Set up signaling
+  setupSignaling();
+
+  addSystemMsg('You joined #' + roomId);
+  
+  // Announce presence
+  sendSignal({ type: 'join', userId: myUserId, name: myName });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SIGNALING (localStorage + storage event)
+// ═══════════════════════════════════════════════════════════════════
+function setupSignaling() {
+  // Listen for storage events from other tabs
+  window.addEventListener('storage', handleStorageEvent);
+  
+  // Register this user in the room
+  registerUser();
+  
+  // Poll for other users and connect
+  setInterval(() => {
+    const users = getRoomUsers();
+    users.forEach(user => {
+      if (user.userId !== myUserId && !peers[user.userId]) {
+        // Connect to this user if we haven't already
+        createPeerConnection(user.userId, user.name, myUserId < user.userId);
+      }
+    });
+  }, 1000);
+  
+  // Cleanup on unload
+  window.addEventListener('beforeunload', cleanup);
+}
+
+function registerUser() {
+  const users = getRoomUsers();
+  const existing = users.find(u => u.userId === myUserId);
+  
+  if (!existing) {
+    users.push({
+      userId: myUserId,
+      name: myName,
+      timestamp: Date.now()
+    });
+  }
+  
+  // Remove stale users (>10 seconds old)
+  const now = Date.now();
+  const active = users.filter(u => now - u.timestamp < 10000 || u.userId === myUserId);
+  
+  localStorage.setItem(`peerroom_${myRoomId}_users`, JSON.stringify(active));
+  updateUserList();
+  
+  // Keep updating our timestamp
+  setTimeout(() => {
+    if (myUserId) registerUser();
+  }, 3000);
+}
+
+function getRoomUsers() {
+  try {
+    const data = localStorage.getItem(`peerroom_${myRoomId}_users`);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function sendSignal(message) {
+  const msgId = Date.now() + '-' + Math.random();
+  const signalKey = `peerroom_${myRoomId}_signal_${msgId}`;
+  
+  localStorage.setItem(signalKey, JSON.stringify({
+    ...message,
+    from: myUserId,
+    fromName: myName,
+    msgId
+  }));
+  
+  // Clean up old signals after 5 seconds
+  setTimeout(() => {
+    localStorage.removeItem(signalKey);
+  }, 5000);
+}
+
+function handleStorageEvent(e) {
+  if (!e.key || !e.newValue) return;
+  if (!e.key.startsWith(`peerroom_${myRoomId}_signal_`)) return;
+  
+  try {
+    const message = JSON.parse(e.newValue);
+    
+    // Don't process our own messages or duplicates
+    if (message.from === myUserId) return;
+    if (processedMessages.has(message.msgId)) return;
+    
+    processedMessages.add(message.msgId);
+    handleSignal(message);
+    
+    // Cleanup old processed IDs
+    if (processedMessages.size > 100) {
+      const arr = Array.from(processedMessages);
+      processedMessages.clear();
+      arr.slice(-50).forEach(id => processedMessages.add(id));
+    }
+  } catch (err) {
+    console.error('Error parsing signal:', err);
+  }
+}
+
+async function handleSignal(message) {
+  console.log('Received signal:', message.type, 'from', message.fromName);
+  
+  switch (message.type) {
+    case 'join':
+      if (!peers[message.userId]) {
+        addSystemMsg(`${message.name} joined`);
+        updateUserList();
+      }
+      break;
+      
+    case 'offer':
+      await handleOffer(message.from, message.offer, message.fromName);
+      break;
+      
+    case 'answer':
+      await handleAnswer(message.from, message.answer);
+      break;
+      
+    case 'ice-candidate':
+      await handleIceCandidate(message.from, message.candidate);
+      break;
+      
+    case 'chat':
+      addChatMsg(message.fromName, message.message, message.timestamp, false);
+      break;
+  }
+}
+
+function cleanup() {
+  // Remove this user from the room
+  const users = getRoomUsers().filter(u => u.userId !== myUserId);
+  localStorage.setItem(`peerroom_${myRoomId}_users`, JSON.stringify(users));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// WEBRTC
+// ═══════════════════════════════════════════════════════════════════
+async function createPeerConnection(userId, name, isInitiator) {
+  if (peers[userId]) return;
+  
+  console.log(`Creating peer connection with ${name}, initiator:`, isInitiator);
+  
+  const pc = new RTCPeerConnection(ICE_SERVERS);
+  peers[userId] = { pc, name };
+
+  // Add local tracks
+  if (localStream) {
+    localStream.getTracks().forEach(track => {
+      pc.addTrack(track, localStream);
+    });
+  }
+
+  // Handle remote stream
+  const remoteStream = new MediaStream();
+  pc.ontrack = (e) => {
+    console.log('Received track from', name);
+    remoteStream.addTrack(e.track);
+    if (!document.getElementById('tile-' + userId)) {
+      addVideoTile(userId, name, remoteStream, false);
+    }
+  };
+
+  // ICE candidates
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      sendSignal({
+        type: 'ice-candidate',
+        to: userId,
+        candidate: e.candidate
+      });
+    }
+  };
+
+  // Connection state
+  pc.onconnectionstatechange = () => {
+    console.log('Connection state with', name, ':', pc.connectionState);
+    if (['failed', 'closed'].includes(pc.connectionState)) {
+      closePeer(userId);
+    }
+  };
+
+  // If we're the initiator, create and send offer
+  if (isInitiator) {
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      sendSignal({
+        type: 'offer',
+        to: userId,
+        offer
+      });
+      console.log('Sent offer to', name);
+    } catch (err) {
+      console.error('Error creating offer:', err);
+    }
+  }
+
+  updateUserList();
+}
+
+async function handleOffer(fromUserId, offer, name) {
+  let peer = peers[fromUserId];
+  
+  if (!peer) {
+    await createPeerConnection(fromUserId, name, false);
+    peer = peers[fromUserId];
+  }
+
+  try {
+    await peer.pc.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = await peer.pc.createAnswer();
+    await peer.pc.setLocalDescription(answer);
+    
+    sendSignal({
+      type: 'answer',
+      to: fromUserId,
+      answer
+    });
+    
+    console.log('Sent answer to', name);
+  } catch (err) {
+    console.error('Error handling offer:', err);
+  }
+}
+
+async function handleAnswer(fromUserId, answer) {
+  const peer = peers[fromUserId];
+  if (peer?.pc) {
+    try {
+      await peer.pc.setRemoteDescription(new RTCSessionDescription(answer));
+      console.log('Set remote description (answer) from', peer.name);
+    } catch (err) {
+      console.error('Error handling answer:', err);
+    }
+  }
+}
+
+async function handleIceCandidate(fromUserId, candidate) {
+  const peer = peers[fromUserId];
+  if (peer?.pc && candidate) {
+    try {
+      await peer.pc.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch (e) {
+      console.error('Error adding ICE candidate:', e);
+    }
+  }
+}
+
+function closePeer(userId) {
+  if (peers[userId]) {
+    peers[userId].pc.close();
+    const name = peers[userId].name;
+    delete peers[userId];
+    addSystemMsg(`${name} disconnected`);
+  }
+  const tile = document.getElementById('tile-' + userId);
+  if (tile) tile.remove();
+  updateUserList();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// VIDEO TILES
+// ═══════════════════════════════════════════════════════════════════
+function addVideoTile(id, name, stream, isLocal) {
+  const tileId = 'tile-' + id;
+  if (document.getElementById(tileId)) return;
+
+  const tile = document.createElement('div');
+  tile.className = 'video-tile' + (isLocal ? ' local' : '');
+  tile.id = tileId;
+
+  const video = document.createElement('video');
+  video.autoplay = true;
+  video.playsInline = true;
+  video.muted = isLocal;
+  video.srcObject = stream;
+
+  const label = document.createElement('div');
+  label.className = 'tile-label';
+  label.textContent = name;
+
+  tile.appendChild(video);
+  tile.appendChild(label);
+  document.getElementById('video-grid').appendChild(tile);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════════════════════════
+function toggleMic() {
+  if (!localStream) return;
+  micOn = !micOn;
+  localStream.getAudioTracks().forEach(t => t.enabled = micOn);
+  const btn = document.getElementById('btn-mic');
+  btn.textContent = micOn ? '🎙️' : '🔇';
+  btn.classList.toggle('off', !micOn);
+}
+
+function toggleCam() {
+  if (!localStream) return;
+  camOn = !camOn;
+  localStream.getVideoTracks().forEach(t => t.enabled = camOn);
+  const btn = document.getElementById('btn-cam');
+  btn.textContent = camOn ? '📷' : '🚫';
+  btn.classList.toggle('off', !camOn);
+}
+
+function leaveRoom() {
+  cleanup();
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
+  Object.keys(peers).forEach(id => closePeer(id));
+  
+  location.hash = '';
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CHAT
+// ═══════════════════════════════════════════════════════════════════
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  const timestamp = Date.now();
+  addChatMsg(myName, msg, timestamp, true);
+
+  sendSignal({
+    type: 'chat',
+    message: msg,
+    timestamp
+  });
+
+  input.value = '';
+}
+
+function addChatMsg(name, text, timestamp, isSelf) {
+  const container = document.getElementById('chat-messages');
+  const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const div = document.createElement('div');
+  div.className = 'msg' + (isSelf ? ' self' : '');
+  div.innerHTML = `
+    <div class="msg-meta">
+      <span class="msg-name">${escapeHtml(name)}</span>
+      <span class="msg-time">${time}</span>
+    </div>
+    <div class="msg-text">${escapeHtml(text)}</div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function addSystemMsg(text) {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'system-msg';
+  div.textContent = text;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// USER LIST
+// ═══════════════════════════════════════════════════════════════════
+function updateUserList() {
+  const ul = document.getElementById('users-list');
+  ul.innerHTML = '';
+
+  // Add ourselves
+  const mePill = document.createElement('div');
+  mePill.className = 'user-pill me';
+  mePill.textContent = myName;
+  ul.appendChild(mePill);
+
+  // Add all users in the room
+  const users = getRoomUsers();
+  users.forEach(user => {
+    if (user.userId !== myUserId) {
+      const pill = document.createElement('div');
+      pill.className = 'user-pill';
+      pill.textContent = user.name;
+      ul.appendChild(pill);
+    }
+  });
+
+  const count = users.length;
+  document.getElementById('user-count-label').textContent =
+    count === 1 ? '1 person' : count + ' people';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════════
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Pre-fill room from URL hash
+window.addEventListener('DOMContentLoaded', () => {
+  const hash = location.hash.replace('#', '').trim();
+  if (hash) document.getElementById('room-input').value = hash;
+  document.getElementById('name-input').focus();
+});
+</script>
+
+</body>
+</html>
