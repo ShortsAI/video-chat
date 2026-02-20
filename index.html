@@ -479,12 +479,6 @@
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
   import { getDatabase, ref, onValue, set, push, onDisconnect, remove } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
 
-  // ═══════════════════════════════════════════════════════════════════
-  // 🔥 REPLACE THIS WITH YOUR OWN FIREBASE CONFIG
-  // ═══════════════════════════════════════════════════════════════════
-  // Get it from: https://console.firebase.google.com
-  // → Create project → Add web app → Copy config
-  
   const firebaseConfig = {
     apiKey: "AIzaSyAUA3bn3AoK_y2dEY64ipEzS8YGM-dy8T8",
     authDomain: "peerbase-chat.firebaseapp.com",
@@ -495,37 +489,41 @@
     appId: "1:342288819619:web:0d93db02fadd31c51ce616"
   };
 
-  // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
 
-  // ═══════════════════════════════════════════════════════════════════
-  // WebRTC Configuration
-  // ═══════════════════════════════════════════════════════════════════
   const ICE_SERVERS = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' }
+      { urls: 'stun:stun1.l.google.com:19302' },
+      {
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      }
     ]
   };
 
-  // ═══════════════════════════════════════════════════════════════════
-  // Global State
-  // ═══════════════════════════════════════════════════════════════════
   let myName = '';
   let myRoomId = '';
   let myUserId = '';
   let localStream = null;
 
-  // peers: { userId -> { pc: RTCPeerConnection, name: string } }
   const peers = {};
 
   let micOn = true;
   let camOn = true;
 
-  // ═══════════════════════════════════════════════════════════════════
-  // JOIN ROOM
-  // ═══════════════════════════════════════════════════════════════════
   window.joinRoom = async function() {
     const name = document.getElementById('name-input').value.trim();
     const roomId = document.getElementById('room-input').value.trim().replace(/\s+/g, '-').toLowerCase() || 'general';
@@ -539,15 +537,12 @@
     myRoomId = roomId;
     myUserId = 'user-' + Math.random().toString(36).substring(2, 9);
 
-    // Update URL
     location.hash = roomId;
     document.getElementById('room-display').textContent = '# ' + roomId;
 
-    // Show app
     document.getElementById('lobby').style.display = 'none';
     document.getElementById('app').classList.add('visible');
 
-    // Get local media
     try {
       localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     } catch (e) {
@@ -557,36 +552,28 @@
 
     addVideoTile('local', myName, localStream, true);
 
-    // Join Firebase room
     await joinFirebaseRoom();
 
     addSystemMsg('You joined #' + roomId);
   };
 
-  // ═══════════════════════════════════════════════════════════════════
-  // FIREBASE SIGNALING
-  // ═══════════════════════════════════════════════════════════════════
   async function joinFirebaseRoom() {
     const roomRef = ref(db, `rooms/${myRoomId}/users/${myUserId}`);
     const usersRef = ref(db, `rooms/${myRoomId}/users`);
 
-    // Register presence
     await set(roomRef, { name: myName, timestamp: Date.now() });
     onDisconnect(roomRef).remove();
 
-    // Listen for other users
     onValue(usersRef, (snapshot) => {
       const users = snapshot.val() || {};
       updateUserList(users);
 
-      // Connect to new users
       Object.keys(users).forEach(userId => {
         if (userId !== myUserId && !peers[userId]) {
           connectToUser(userId, users[userId].name);
         }
       });
 
-      // Remove disconnected users
       Object.keys(peers).forEach(userId => {
         if (!users[userId]) {
           closePeer(userId);
@@ -594,23 +581,19 @@
       });
     });
 
-    // Listen for signaling messages
     const signalRef = ref(db, `rooms/${myRoomId}/signals/${myUserId}`);
     onValue(signalRef, async (snapshot) => {
       const signals = snapshot.val() || {};
 
       for (const [signalId, signal] of Object.entries(signals)) {
         await handleSignal(signal);
-        // Clean up processed signal
         remove(ref(db, `rooms/${myRoomId}/signals/${myUserId}/${signalId}`));
       }
     });
 
-    // Listen for chat messages
     const chatRef = ref(db, `rooms/${myRoomId}/chat`);
     onValue(chatRef, (snapshot) => {
       const messages = snapshot.val() || {};
-      // Only show new messages (simple approach - in production you'd track last seen)
       Object.values(messages).slice(-1).forEach(msg => {
         if (msg.userId !== myUserId) {
           addChatMsg(msg.name, msg.message, msg.timestamp, false);
@@ -619,7 +602,6 @@
     });
   }
 
-  // Send signal to another user
   async function sendSignal(toUserId, signal) {
     const signalRef = ref(db, `rooms/${myRoomId}/signals/${toUserId}`);
     await push(signalRef, {
@@ -629,7 +611,6 @@
     });
   }
 
-  // Handle incoming signal
   async function handleSignal(signal) {
     const { from, type, offer, answer, candidate } = signal;
 
@@ -642,19 +623,14 @@
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // WEBRTC CONNECTION
-  // ═══════════════════════════════════════════════════════════════════
   async function connectToUser(userId, name) {
     const pc = new RTCPeerConnection(ICE_SERVERS);
     peers[userId] = { pc, name };
 
-    // Add local tracks
     if (localStream) {
       localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
     }
 
-    // Handle remote stream
     const remoteStream = new MediaStream();
     pc.ontrack = (e) => {
       remoteStream.addTrack(e.track);
@@ -663,21 +639,18 @@
       }
     };
 
-    // ICE candidates
     pc.onicecandidate = (e) => {
       if (e.candidate) {
         sendSignal(userId, { type: 'ice-candidate', candidate: e.candidate });
       }
     };
 
-    // Connection state
     pc.onconnectionstatechange = () => {
       if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
         closePeer(userId);
       }
     };
 
-    // Create and send offer (only if we're the "initiator" - user with lower ID)
     if (myUserId < userId) {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -688,13 +661,11 @@
   async function handleOffer(fromUserId, offer) {
     let peer = peers[fromUserId];
     if (!peer) {
-      // Create connection if it doesn't exist
-      const name = 'User'; // We'll get the name from Firebase
+      const name = 'User';
       const pc = new RTCPeerConnection(ICE_SERVERS);
       peer = { pc, name };
       peers[fromUserId] = peer;
 
-      // Set up handlers
       const remoteStream = new MediaStream();
       pc.ontrack = (e) => {
         remoteStream.addTrack(e.track);
@@ -747,9 +718,6 @@
     if (tile) tile.remove();
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // VIDEO TILES
-  // ═══════════════════════════════════════════════════════════════════
   function addVideoTile(id, name, stream, isLocal) {
     const tileId = 'tile-' + id;
     if (document.getElementById(tileId)) return;
@@ -773,9 +741,6 @@
     document.getElementById('video-grid').appendChild(tile);
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // CONTROLS
-  // ═══════════════════════════════════════════════════════════════════
   window.toggleMic = function() {
     if (!localStream) return;
     micOn = !micOn;
@@ -801,9 +766,6 @@
     location.reload();
   };
 
-  // ═══════════════════════════════════════════════════════════════════
-  // CHAT
-  // ═══════════════════════════════════════════════════════════════════
   window.sendChat = async function() {
     const input = document.getElementById('chat-input');
     const msg = input.value.trim();
@@ -847,9 +809,6 @@
     container.scrollTop = container.scrollHeight;
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // USER LIST
-  // ═══════════════════════════════════════════════════════════════════
   function updateUserList(users) {
     const ul = document.getElementById('users-list');
     ul.innerHTML = '';
@@ -872,19 +831,16 @@
       count === 1 ? '1 person' : count + ' people';
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // UTILITIES
-  // ═══════════════════════════════════════════════════════════════════
   function escapeHtml(str) {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  // Pre-fill room from URL hash
   window.addEventListener('DOMContentLoaded', () => {
     const hash = location.hash.replace('#', '').trim();
     if (hash) document.getElementById('room-input').value = hash;
     document.getElementById('name-input').focus();
   });
 </script>
+
 </body>
 </html>
