@@ -6,7 +6,8 @@
   <title>PeerRoom — Instant Video Chat</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js"></script>
+  <!-- simple-peer (pure client-side WebRTC - no external server) -->
+  <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -69,16 +70,15 @@
     #app { display: none; height: 100vh; flex-direction: column; }
     #app.visible { display: flex; }
     .app-header {
-      display: flex; align-items: center; gap: 12px; padding: 0 20px; height: 52px;
+      display: flex; align-items: center; gap: 8px; padding: 0 20px; height: 52px;
       border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0;
     }
     .app-header .logo { margin: 0; font-size: 12px; }
     .room-tag { font-family: 'DM Mono', monospace; font-size: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; color: var(--muted); }
-    .peer-id-display { font-size: 11px; color: var(--muted); background: var(--surface2); padding: 2px 8px; border-radius: 4px; }
-    .header-spacer { flex: 1; }
-    .call-input-area { display: flex; gap: 8px; }
-    .call-input { width: 180px; padding: 6px 10px; font-size: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); }
-    .call-btn { background: var(--accent2); color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-weight: 600; }
+    .signaling-btn {
+      background: var(--accent2); color: #fff; border: none; border-radius: 6px; padding: 6px 12px;
+      cursor: pointer; font-weight: 600; font-size: 12px;
+    }
     .user-count { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); }
     .main-layout { display: flex; flex: 1; overflow: hidden; }
@@ -163,10 +163,10 @@
   <div class="lobby-card">
     <div class="logo">⬡ PeerRoom</div>
     <h1>Jump in.<br/>No signup needed.</h1>
-    <p>Instant video &amp; text chat. Allow camera/mic. Use two browsers/tabs. Copy full Peer ID from one, paste into other's call box.</p>
+    <p>Instant video &amp; text chat.<br/>One person clicks “Host”, the other “Guest”.<br/>Copy-paste 2 short codes once → everything syncs.</p>
     <label for="name-input">Your name</label>
     <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off" />
-    <label for="room-input">Room ID</label>
+    <label for="room-input">Room ID (optional)</label>
     <input id="room-input" type="text" placeholder="e.g. my-team-standup" maxlength="40" autocomplete="off" />
     <button class="btn-join" onclick="joinRoom()">Enter Room →</button>
   </div>
@@ -176,12 +176,10 @@
   <header class="app-header">
     <div class="logo">⬡ PeerRoom</div>
     <div class="room-tag" id="room-display"></div>
-    <span class="peer-id-display">My Peer ID: <span id="my-peer-id">connecting...</span></span>
     <div class="header-spacer"></div>
-    <div class="call-input-area">
-      <input id="remote-peer-id" class="call-input" placeholder="Paste exact peer ID here" />
-      <button class="call-btn" onclick="callPeer()">Call</button>
-    </div>
+    <button class="signaling-btn" onclick="startAsHost()">Host - Generate Offer</button>
+    <button class="signaling-btn" onclick="startAsGuest()">Guest - Paste Offer</button>
+    <button class="signaling-btn" onclick="pasteAnswer()">Paste Answer (Host)</button>
     <div class="user-count"><span class="dot"></span> <span id="user-count-label">1 person</span></div>
   </header>
   <div class="main-layout">
@@ -190,12 +188,11 @@
       <div class="controls">
         <button class="ctrl-btn" id="btn-mic" title="Toggle mic" onclick="toggleMic()">🎙️</button>
         <button class="ctrl-btn" id="btn-cam" title="Toggle camera" onclick="toggleCam()">📷</button>
-        <button class="ctrl-btn" onclick="refreshICE()" title="Refresh connection (if stuck)">🔄</button>
         <button class="ctrl-btn leave" title="Leave room" onclick="leaveRoom()">📞</button>
       </div>
     </div>
     <div class="chat-panel">
-      <div class="chat-header">💬 Chat (local only for now)</div>
+      <div class="chat-header">💬 Chat (now synced between tabs!)</div>
       <div id="chat-messages"></div>
       <div id="users-area" style="border-top:1px solid var(--border); padding:10px 14px 0;">
         <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">In room</div>
@@ -213,19 +210,9 @@
 let myName = '';
 let myRoomId = '';
 let peer = null;
-let myPeerId = '';
 let localStream = null;
-let calls = {};
-
-const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
-  { urls: 'stun:stun3.l.google.com:19302' },
-  { urls: 'stun:stun4.l.google.com:19302' },
-  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-];
+let dataChannel = null;
+let users = new Set();
 
 document.addEventListener('DOMContentLoaded', () => {
   const hash = location.hash.replace('#', '').trim();
@@ -244,86 +231,107 @@ window.joinRoom = async function() {
   myName = name;
   myRoomId = roomId;
 
-  addSystemMsg('Joining... Allow camera & mic in browser popup.');
-
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    addSystemMsg('Media ready!');
-    addVideoTile('local', myName, localStream, true);
-  } catch (e) {
-    console.error('Media error:', e);
-    addSystemMsg('Media failed: ' + e.message + '. Reload & allow permissions.');
-  }
-
   document.getElementById('room-display').textContent = '# ' + roomId;
   document.getElementById('lobby').style.display = 'none';
   document.getElementById('app').classList.add('visible');
 
-  addSystemMsg(`Joined as ${name}`);
+  addSystemMsg(`You joined #${roomId} as ${name}`);
+
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    addVideoTile('local', myName, localStream, true);
+    addSystemMsg('Camera ready. Now click **Host** or **Guest** above to connect.');
+  } catch (e) {
+    addSystemMsg('Camera/mic failed. Reload and allow access.');
+  }
+
   updateUserList();
-
-  addSystemMsg('Connecting to signaling server...');
-
-  peer = new Peer({
-    host: '0.peerjs.com',
-    port: 443,
-    path: '/',
-    secure: true,
-    config: { iceServers: ICE_SERVERS },
-    debug: 3
-  });
-
-  peer.on('open', (id) => {
-    myPeerId = id;
-    document.getElementById('my-peer-id').textContent = id;
-    addSystemMsg(`Your Peer ID: ${id} — share exact ID!`);
-  });
-
-  peer.on('error', (err) => {
-    console.error('Peer error:', err);
-    addSystemMsg(`Error: ${err.type} - ${err.message}. Try refresh/different network.`);
-  });
-
-  peer.on('call', (call) => {
-    addSystemMsg(`Incoming call from ${call.peer}`);
-    if (localStream) {
-      call.answer(localStream);
-      handleCall(call);
-    } else {
-      addSystemMsg('No media for incoming call.');
-    }
-  });
-
-  setTimeout(() => {
-    if (!myPeerId) addSystemMsg('Signaling slow/failed. Check console → Network for peerjs websocket.');
-  }, 15000);
 };
 
-function callPeer() {
-  const remoteId = document.getElementById('remote-peer-id').value.trim();
-  if (!remoteId) return addSystemMsg('Enter peer ID.');
-  if (!localStream) return addSystemMsg('No media — allow camera.');
-  addSystemMsg(`Calling ${remoteId}...`);
-  const call = peer.call(remoteId, localStream);
-  handleCall(call);
+function startAsHost() {
+  if (peer) return addSystemMsg('Already connected.');
+  if (!localStream) return addSystemMsg('Wait for camera first.');
+
+  peer = new SimplePeer({ initiator: true, stream: localStream, trickle: false });
+
+  peer.on('signal', data => {
+    const sdp = JSON.stringify(data);
+    addSystemMsg('COPY THIS OFFER and send to your friend:\n\n' + sdp);
+    navigator.clipboard.writeText(sdp);
+  });
+
+  setupPeerEvents();
 }
 
-function handleCall(call) {
-  calls[call.peer] = call;
-  call.on('stream', (remoteStream) => {
-    addSystemMsg(`Connected to ${call.peer}!`);
-    addVideoTile(call.peer, call.peer.substring(0,8) + '...', remoteStream, false);
+function startAsGuest() {
+  if (peer) return addSystemMsg('Already connected.');
+  if (!localStream) return addSystemMsg('Wait for camera first.');
+
+  const offerStr = prompt('Paste the OFFER from the Host:');
+  if (!offerStr) return;
+
+  peer = new SimplePeer({ initiator: false, stream: localStream, trickle: false });
+  peer.signal(JSON.parse(offerStr));
+
+  peer.on('signal', data => {
+    const sdp = JSON.stringify(data);
+    addSystemMsg('COPY THIS ANSWER and send back to the Host:\n\n' + sdp);
+    navigator.clipboard.writeText(sdp);
   });
-  call.on('close', () => {
-    addSystemMsg(`Call ended with ${call.peer}.`);
-    document.getElementById('tile-' + call.peer)?.remove();
-    delete calls[call.peer];
+
+  setupPeerEvents();
+}
+
+window.pasteAnswer = function() {
+  if (!peer) return addSystemMsg('Generate offer first (Host).');
+  const answerStr = prompt('Paste the ANSWER from your friend:');
+  if (answerStr) {
+    peer.signal(JSON.parse(answerStr));
+  }
+};
+
+function setupPeerEvents() {
+  peer.on('connect', () => {
+    addSystemMsg('✅ Connected! Chat + user list now sync automatically.');
+    dataChannel = peer;
+    sendData({ type: 'join', name: myName });
   });
-  call.on('error', (err) => {
-    console.error('Call error:', err);
-    addSystemMsg(`Call error: ${err.message || err}`);
+
+  peer.on('stream', remoteStream => {
+    addVideoTile('remote', 'Friend', remoteStream, false);
+    addSystemMsg('Remote camera connected!');
+  });
+
+  peer.on('data', handleIncomingData);
+
+  peer.on('close', () => {
+    addSystemMsg('Connection closed.');
   });
 }
+
+function sendData(obj) {
+  if (dataChannel) dataChannel.send(JSON.stringify(obj));
+}
+
+function handleIncomingData(raw) {
+  const data = JSON.parse(raw);
+  if (data.type === 'chat') {
+    addChatMsg(data.name, data.message, Date.now(), false);
+  } else if (data.type === 'join') {
+    users.add(data.name);
+    updateUserList();
+  }
+}
+
+window.sendChat = function() {
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+
+  addChatMsg(myName, message, Date.now(), true);
+  sendData({ type: 'chat', name: myName, message });
+  input.value = '';
+};
 
 function addVideoTile(id, name, stream, isLocal) {
   const tileId = 'tile-' + id;
@@ -349,42 +357,31 @@ function addVideoTile(id, name, stream, isLocal) {
 }
 
 window.toggleMic = function() {
-  const track = localStream?.getAudioTracks()[0];
+  if (!localStream) return;
+  const track = localStream.getAudioTracks()[0];
   if (track) {
     track.enabled = !track.enabled;
-    document.getElementById('btn-mic').textContent = track.enabled ? '🎙️' : '🔇';
-    document.getElementById('btn-mic').classList.toggle('off', !track.enabled);
+    const btn = document.getElementById('btn-mic');
+    btn.textContent = track.enabled ? '🎙️' : '🔇';
+    btn.classList.toggle('off', !track.enabled);
   }
 };
 
 window.toggleCam = function() {
-  const track = localStream?.getVideoTracks()[0];
+  if (!localStream) return;
+  const track = localStream.getVideoTracks()[0];
   if (track) {
     track.enabled = !track.enabled;
-    document.getElementById('btn-cam').textContent = track.enabled ? '📷' : '🚫';
-    document.getElementById('btn-cam').classList.toggle('off', !track.enabled);
+    const btn = document.getElementById('btn-cam');
+    btn.textContent = track.enabled ? '📷' : '🚫';
+    btn.classList.toggle('off', !track.enabled);
   }
 };
 
-window.refreshICE = function() {
-  addSystemMsg('Refreshing ICE candidates...');
-  Object.values(calls).forEach(call => {
-    call.peerConnection?.restartIce?.();
-  });
-};
-
 window.leaveRoom = function() {
-  localStream?.getTracks().forEach(t => t.stop());
-  peer?.destroy();
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
+  if (peer) peer.destroy();
   location.reload();
-};
-
-window.sendChat = function() {
-  const input = document.getElementById('chat-input');
-  const message = input.value.trim();
-  if (!message) return;
-  addChatMsg(myName, message, Date.now(), true);
-  input.value = '';
 };
 
 function addChatMsg(name, text, timestamp, isSelf) {
@@ -417,9 +414,9 @@ function updateUserList() {
   list.innerHTML = '';
   const pill = document.createElement('div');
   pill.className = 'user-pill me';
-  pill.textContent = myName || 'You';
+  pill.textContent = myName;
   list.appendChild(pill);
-  document.getElementById('user-count-label').textContent = '1 person';
+  document.getElementById('user-count-label').textContent = users.size + 1 + ' people';
 }
 
 function escapeHtml(str) {
