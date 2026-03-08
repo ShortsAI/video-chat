@@ -8,20 +8,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:        #0b0d11;
-      --surface:   #13161d;
-      --surface2:  #1c2029;
-      --border:    #252a35;
-      --accent:    #00e5a0;
-      --accent2:   #0099ff;
-      --danger:    #ff4466;
-      --text:      #e8eaf0;
-      --muted:     #6b7280;
-      --radius:    12px;
+      --bg: #0b0d11;
+      --surface: #13161d;
+      --surface2: #1c2029;
+      --border: #252a35;
+      --accent: #00e5a0;
+      --accent2: #0099ff;
+      --danger: #ff4466;
+      --text: #e8eaf0;
+      --muted: #6b7280;
+      --radius: 12px;
     }
-
     html, body {
       height: 100%;
       background: var(--bg);
@@ -29,7 +27,6 @@
       font-family: 'Syne', sans-serif;
       overflow: hidden;
     }
-
     #lobby {
       position: fixed; inset: 0;
       display: flex; align-items: center; justify-content: center;
@@ -37,7 +34,6 @@
       z-index: 100;
       animation: fadeIn .4s ease;
     }
-
     .lobby-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -48,7 +44,6 @@
       position: relative;
       overflow: hidden;
     }
-
     .lobby-card::before {
       content: '';
       position: absolute;
@@ -57,7 +52,6 @@
       background: radial-gradient(circle, rgba(0,229,160,.15) 0%, transparent 70%);
       pointer-events: none;
     }
-
     .lobby-card::after {
       content: '';
       position: absolute;
@@ -66,7 +60,6 @@
       background: radial-gradient(circle, rgba(0,153,255,.12) 0%, transparent 70%);
       pointer-events: none;
     }
-
     .logo {
       font-size: 13px;
       font-weight: 700;
@@ -75,21 +68,18 @@
       color: var(--accent);
       margin-bottom: 24px;
     }
-
     .lobby-card h1 {
       font-size: 32px;
       font-weight: 800;
       line-height: 1.15;
       margin-bottom: 10px;
     }
-
     .lobby-card p {
       color: var(--muted);
       font-size: 14px;
       line-height: 1.6;
       margin-bottom: 32px;
     }
-
     label {
       display: block;
       font-size: 11px;
@@ -99,7 +89,6 @@
       color: var(--muted);
       margin-bottom: 7px;
     }
-
     input[type="text"] {
       width: 100%;
       background: var(--surface2);
@@ -113,10 +102,8 @@
       transition: border-color .2s;
       margin-bottom: 16px;
     }
-
     input[type="text"]:focus { border-color: var(--accent); }
     input[type="text"]::placeholder { color: var(--muted); }
-
     .btn-join {
       width: 100%;
       background: var(--accent);
@@ -134,14 +121,12 @@
     }
     .btn-join:hover { opacity: .88; transform: translateY(-1px); }
     .btn-join:active { transform: translateY(0); }
-
     #app {
       display: none;
       height: 100vh;
       flex-direction: column;
     }
     #app.visible { display: flex; }
-
     .app-header {
       display: flex;
       align-items: center;
@@ -174,13 +159,11 @@
       background: var(--accent);
       box-shadow: 0 0 6px var(--accent);
     }
-
     .main-layout {
       display: flex;
       flex: 1;
       overflow: hidden;
     }
-
     .video-area {
       flex: 1;
       display: flex;
@@ -188,7 +171,6 @@
       background: var(--bg);
       overflow: hidden;
     }
-
     #video-grid {
       flex: 1;
       display: grid;
@@ -198,7 +180,6 @@
       overflow-y: auto;
       align-content: start;
     }
-
     .video-tile {
       position: relative;
       background: var(--surface);
@@ -208,18 +189,15 @@
       aspect-ratio: 16/9;
       animation: tileIn .3s ease;
     }
-
     @keyframes tileIn {
       from { opacity: 0; transform: scale(.96); }
-      to   { opacity: 1; transform: scale(1); }
+      to { opacity: 1; transform: scale(1); }
     }
-
     .video-tile video {
       width: 100%; height: 100%;
       object-fit: cover;
       display: block;
     }
-
     .video-tile .tile-label {
       position: absolute;
       bottom: 10px; left: 12px;
@@ -231,10 +209,8 @@
       font-weight: 600;
       color: #fff;
     }
-
     .video-tile.local { border-color: var(--accent); }
     .video-tile.local .tile-label::after { content: ' (you)'; color: var(--accent); }
-
     .controls {
       display: flex;
       align-items: center;
@@ -245,7 +221,6 @@
       background: var(--surface);
       flex-shrink: 0;
     }
-
     .ctrl-btn {
       width: 46px; height: 46px;
       border-radius: 50%;
@@ -261,7 +236,6 @@
     .ctrl-btn.off { background: rgba(255,68,102,.15); border-color: var(--danger); color: var(--danger); }
     .ctrl-btn.leave { background: var(--danger); border-color: var(--danger); color: #fff; }
     .ctrl-btn.leave:hover { opacity: .85; }
-
     .chat-panel {
       width: 300px;
       border-left: 1px solid var(--border);
@@ -270,7 +244,6 @@
       background: var(--surface);
       flex-shrink: 0;
     }
-
     .chat-header {
       padding: 14px 18px;
       border-bottom: 1px solid var(--border);
@@ -280,65 +253,77 @@
       text-transform: uppercase;
       color: var(--muted);
     }
-
     #chat-messages {
       flex: 1;
       overflow-y: auto;
-      padding: 14px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
       scroll-behavior: smooth;
     }
-
     #chat-messages::-webkit-scrollbar { width: 4px; }
     #chat-messages::-webkit-scrollbar-track { background: transparent; }
     #chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
     .msg {
+      max-width: 80%;
+      padding: 10px 14px;
+      border-radius: 18px;
+      line-height: 1.4;
       animation: fadeIn .2s ease;
     }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
+    .msg.self {
+      align-self: flex-end;
+      background: rgba(0, 153, 255, 0.18);
+      border: 1px solid rgba(0, 153, 255, 0.3);
+    }
+    .msg:not(.self) {
+      align-self: flex-start;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+    }
     .msg .msg-meta {
-      display: flex; align-items: baseline; gap: 8px;
-      margin-bottom: 3px;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 4px;
     }
     .msg .msg-name {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
-      letter-spacing: .05em;
-      color: var(--accent);
+      letter-spacing: .03em;
     }
     .msg.self .msg-name { color: var(--accent2); }
-
+    .msg:not(.self) .msg-name { color: var(--accent); }
     .msg .msg-time {
       font-family: 'DM Mono', monospace;
       font-size: 10px;
       color: var(--muted);
+      opacity: 0.7;
     }
     .msg .msg-text {
-      font-size: 13px;
-      line-height: 1.55;
-      color: var(--text);
+      font-size: 14px;
       word-break: break-word;
     }
-
     .system-msg {
+      align-self: center;
+      max-width: 90%;
+      text-align: center;
       font-size: 11px;
       color: var(--muted);
-      text-align: center;
       font-style: italic;
-      animation: fadeIn .3s ease;
+      background: rgba(107, 114, 128, 0.12);
+      padding: 6px 12px;
+      border-radius: 12px;
+      margin: 8px 0;
     }
-
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     .chat-input-area {
       padding: 12px;
       border-top: 1px solid var(--border);
       display: flex;
       gap: 8px;
     }
-
     #chat-input {
       flex: 1;
       background: var(--surface2);
@@ -353,7 +338,6 @@
     }
     #chat-input:focus { border-color: var(--accent); }
     #chat-input::placeholder { color: var(--muted); }
-
     .send-btn {
       background: var(--accent);
       border: none;
@@ -366,7 +350,6 @@
       display: flex; align-items: center; justify-content: center;
     }
     .send-btn:hover { opacity: .85; transform: scale(1.05); }
-
     .users-list {
       padding: 0 14px 12px;
       display: flex;
@@ -382,7 +365,6 @@
       color: var(--text);
     }
     .user-pill.me { border-color: var(--accent); color: var(--accent); }
-
     @media (max-width: 640px) {
       .chat-panel { display: none; }
     }
@@ -390,64 +372,59 @@
 </head>
 <body>
 
-<div id="lobby">
-  <div class="lobby-card">
-    <div class="logo">⬡ PeerRoom</div>
-    <h1>Jump in.<br/>No signup needed.</h1>
-    <p>Instant video &amp; text chat. Share the room link with anyone to connect.</p>
-
-    <label for="name-input">Your name</label>
-    <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off" />
-
-    <label for="room-input">Room ID</label>
-    <input id="room-input" type="text" placeholder="e.g. my-team-standup" maxlength="40" autocomplete="off" />
-
-    <button class="btn-join" onclick="joinRoom()">Enter Room →</button>
-  </div>
-</div>
-
-<div id="app">
-  <header class="app-header">
-    <div class="logo">⬡ PeerRoom</div>
-    <div class="room-tag" id="room-display"></div>
-    <div class="header-spacer"></div>
-    <div class="user-count"><span class="dot"></span> <span id="user-count-label">1 person</span></div>
-  </header>
-
-  <div class="main-layout">
-    <div class="video-area">
-      <div id="video-grid"></div>
-      <div class="controls">
-        <button class="ctrl-btn" id="btn-mic" title="Toggle mic" onclick="toggleMic()">🎙️</button>
-        <button class="ctrl-btn" id="btn-cam" title="Toggle camera" onclick="toggleCam()">📷</button>
-        <button class="ctrl-btn leave" title="Leave room" onclick="leaveRoom()">📞</button>
-      </div>
+  <div id="lobby">
+    <div class="lobby-card">
+      <div class="logo">⬡ PeerRoom</div>
+      <h1>Jump in.<br/>No signup needed.</h1>
+      <p>Instant video &amp; text chat. Share the room link with anyone to connect.</p>
+      <label for="name-input">Your name</label>
+      <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off" />
+      <label for="room-input">Room ID</label>
+      <input id="room-input" type="text" placeholder="e.g. my-team-standup" maxlength="40" autocomplete="off" />
+      <button class="btn-join" onclick="joinRoom()">Enter Room →</button>
     </div>
+  </div>
 
-    <div class="chat-panel">
-      <div class="chat-header">💬 Chat</div>
-      <div id="chat-messages"></div>
-
-      <div id="users-area" style="border-top:1px solid var(--border); padding:10px 14px 0;">
-        <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">In room</div>
-        <div class="users-list" id="users-list"></div>
+  <div id="app">
+    <header class="app-header">
+      <div class="logo">⬡ PeerRoom</div>
+      <div class="room-tag" id="room-display"></div>
+      <div class="header-spacer"></div>
+      <div class="user-count"><span class="dot"></span> <span id="user-count-label">1 person</span></div>
+    </header>
+    <div class="main-layout">
+      <div class="video-area">
+        <div id="video-grid"></div>
+        <div class="controls">
+          <button class="ctrl-btn" id="btn-mic" title="Toggle mic" onclick="toggleMic()">🎙️</button>
+          <button class="ctrl-btn" id="btn-cam" title="Toggle camera" onclick="toggleCam()">📷</button>
+          <button class="ctrl-btn leave" title="Leave room" onclick="leaveRoom()">📞</button>
+        </div>
       </div>
-
-      <div class="chat-input-area">
-        <input id="chat-input" type="text" placeholder="Say something…" maxlength="500"
-               onkeydown="if(event.key==='Enter') sendChat()" />
-        <button class="send-btn" onclick="sendChat()">➤</button>
+      <div class="chat-panel">
+        <div class="chat-header">💬 Chat</div>
+        <div id="chat-messages"></div>
+        <div id="users-area" style="border-top:1px solid var(--border); padding:10px 14px 0;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">In room</div>
+          <div class="users-list" id="users-list"></div>
+        </div>
+        <div class="chat-input-area">
+          <input id="chat-input" type="text" placeholder="Say something…" maxlength="500"
+                 onkeydown="if(event.key==='Enter') sendChat()" />
+          <button class="send-btn" onclick="sendChat()">➤</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
+  <!-- Notification sound for incoming messages -->
   <audio id="bloop-sound" preload="auto">
-  <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_0b5e6d0e0a.mp3?filename=bloop-01-116823.mp3" type="audio/mpeg">
-</audio>
+    <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_0b5e6d0e0a.mp3?filename=bloop-01-116823.mp3" type="audio/mpeg">
+  </audio>
+
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-  import { getDatabase, ref, onValue, set, push, onDisconnect, remove, onChildAdded, query, limitToLast } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
+  import { getDatabase, ref, onValue, set, push, onDisconnect, onChildAdded, query, limitToLast } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
 
   const firebaseConfig = {
     apiKey: "AIzaSyAUA3bn3AoK_y2dEY64ipEzS8YGM-dy8T8",
@@ -461,6 +438,8 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
+
+  const bloop = document.getElementById('bloop-sound');
 
   let myName = '';
   let myRoomId = '';
@@ -481,13 +460,10 @@
 
     location.hash = roomId;
     document.getElementById('room-display').textContent = '# ' + roomId;
-
     document.getElementById('lobby').style.display = 'none';
     document.getElementById('app').classList.add('visible');
 
-    // We'll add media later — for now just join text
     addSystemMsg(`You joined #${roomId} as ${name}`);
-
     await joinFirebaseRoom();
   };
 
@@ -496,24 +472,21 @@
     await set(userRef, { name: myName, joined: Date.now() });
     onDisconnect(userRef).remove();
 
-    // Users list live
     onValue(ref(db, `rooms/${myRoomId}/users`), (snap) => {
       const users = snap.val() || {};
       updateUserList(users);
     });
 
-    // Chat history + live
     const chatRef = ref(db, `rooms/${myRoomId}/chat`);
-    const chatQuery = query(chatRef, limitToLast(100)); // last 100 msgs to avoid overload
+    const chatQuery = query(chatRef, limitToLast(100));
 
     onChildAdded(chatQuery, (snap) => {
       const msg = snap.val();
       if (msg) {
-        addChatMsg(msg.name, msg.message, msg.timestamp, msg.userId === myUserId);
+        const isSelf = msg.userId === myUserId;
+        addChatMsg(msg.name, msg.message, msg.timestamp, isSelf);
       }
     });
-
-    // Optional: clean old signals/users if needed, but skip for now
   }
 
   window.sendChat = async function() {
@@ -546,6 +519,12 @@
     `;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
+
+    // Play sound only for incoming messages when tab is visible
+    if (!isSelf && !document.hidden) {
+      bloop.currentTime = 0;
+      bloop.play().catch(() => {}); // silent fail if autoplay blocked
+    }
   }
 
   function addSystemMsg(text) {
@@ -567,7 +546,6 @@
       pill.textContent = u.name;
       list.appendChild(pill);
     });
-
     const count = userArray.length;
     document.getElementById('user-count-label').textContent = count === 1 ? '1 person' : `${count} people`;
   }
