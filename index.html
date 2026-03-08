@@ -7,10 +7,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-  <!-- Firebase module: init + expose to window._fb -->
+  <!-- Firebase module -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, set, onValue, push, onDisconnect, remove, onChildAdded, increment, serverTimestamp }
+    import { getDatabase, ref, set, get, onValue, push, onDisconnect, remove, onChildAdded, query, orderByChild }
       from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     const fbApp = initializeApp({
       apiKey: "AIzaSyAUA3bn3AoK_y2dEY64ipEzS8YGM-dy8T8",
@@ -21,7 +21,7 @@
       messagingSenderId: "342288819619",
       appId: "1:342288819619:web:0d93db02fadd31c51ce616"
     });
-    window._fb = { db: getDatabase(fbApp), ref, set, onValue, push, onDisconnect, remove, onChildAdded, increment, serverTimestamp };
+    window._fb = { db: getDatabase(fbApp), ref, set, get, onValue, push, onDisconnect, remove, onChildAdded, query, orderByChild };
     window.dispatchEvent(new Event('firebase-ready'));
   </script>
 
@@ -38,7 +38,7 @@
     }
     html,body { height:100%; background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; overflow:hidden; }
 
-    /* ── LOBBY ── */
+    /* ─── LOBBY ─────────────────────────────────────────────── */
     #lobby {
       position:fixed; inset:0; display:flex; flex-direction:column; align-items:center;
       background:var(--bg); z-index:100; overflow-y:auto; padding:36px 20px 60px;
@@ -48,251 +48,248 @@
 
     .lobby-bg { position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:0; }
     .blob { position:absolute; border-radius:50%; filter:blur(90px); opacity:.22; animation:blobDrift 12s ease-in-out infinite alternate; }
-    .blob-1 { width:500px;height:500px;top:-150px;left:-100px;background:#00e5a0;animation-delay:0s; }
+    .blob-1 { width:500px;height:500px;top:-150px;left:-100px;background:#00e5a0; }
     .blob-2 { width:400px;height:400px;bottom:-100px;right:-80px;background:#0099ff;animation-delay:-4s; }
     .blob-3 { width:300px;height:300px;top:40%;left:50%;background:#9933ff;animation-delay:-8s; }
     @keyframes blobDrift { from{transform:translate(0,0) scale(1);} to{transform:translate(30px,20px) scale(1.08);} }
 
     .lobby-inner { position:relative; z-index:1; width:100%; max-width:1000px; }
 
+    /* Top-right HUD */
+    .top-hud {
+      position:fixed; top:16px; right:20px; z-index:200;
+      display:flex; flex-direction:column; align-items:flex-end; gap:5px;
+    }
+    .total-online-badge {
+      display:flex; align-items:center; gap:7px;
+      background:rgba(11,13,17,.9); backdrop-filter:blur(8px);
+      border:1px solid rgba(0,255,200,.4); border-radius:30px;
+      padding:5px 14px 5px 10px;
+      font-family:'DM Mono',monospace; font-size:13px; color:#00ffcc;
+      box-shadow:0 0 12px rgba(0,255,200,.2);
+    }
+    .online-dot {
+      width:8px; height:8px; border-radius:50%; background:#00ffcc;
+      box-shadow:0 0 6px #00ffcc,0 0 12px #00ffcc;
+      animation:dotPulse 2s ease-in-out infinite;
+      flex-shrink:0;
+    }
+    .local-time {
+      font-family:'DM Mono',monospace; font-size:11px; color:rgba(255,255,255,.45);
+      text-align:right; padding-right:4px; letter-spacing:.05em;
+    }
+    @keyframes dotPulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.4;transform:scale(.7);} }
+
     /* Hero */
-    .lobby-hero { text-align:center; margin-bottom:32px; }
+    .lobby-hero { text-align:center; margin-bottom:28px; padding-top:8px; }
     .lobby-logo {
-      display:inline-flex; align-items:center; gap:12px; font-size:13px; font-weight:700;
-      letter-spacing:.22em; text-transform:uppercase; color:var(--accent); margin-bottom:18px;
+      display:inline-flex; align-items:center; gap:10px; font-size:13px; font-weight:700;
+      letter-spacing:.22em; text-transform:uppercase; color:var(--accent); margin-bottom:16px;
       text-shadow:0 0 12px var(--accent),0 0 28px var(--accent);
     }
     .logo-hex { font-size:24px; filter:drop-shadow(0 0 8px var(--accent)); }
     .lobby-hero h1 {
-      font-size:clamp(30px,4.5vw,52px); font-weight:800; line-height:1.1; margin-bottom:10px;
+      font-size:clamp(28px,4vw,48px); font-weight:800; line-height:1.1; margin-bottom:8px;
       background:linear-gradient(135deg,#e8eaf0 30%,var(--accent) 100%);
       -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
     }
     .lobby-hero p { color:var(--muted); font-size:14px; }
 
-    /* Total online badge — top right of hero */
-    .total-online-badge {
-      position:fixed; top:18px; right:22px; z-index:200;
-      display:flex; align-items:center; gap:7px;
-      background:rgba(11,13,17,.85); backdrop-filter:blur(8px);
-      border:1px solid rgba(0,255,200,.35); border-radius:30px;
-      padding:6px 14px 6px 10px;
-      font-family:'DM Mono',monospace; font-size:13px; font-weight:500;
-      color:#00ffcc;
-      box-shadow:0 0 14px rgba(0,255,200,.3), inset 0 0 10px rgba(0,255,200,.06);
-    }
-    .total-online-dot {
-      width:8px; height:8px; border-radius:50%; background:#00ffcc;
-      box-shadow:0 0 6px #00ffcc, 0 0 12px #00ffcc;
-      animation:dotPulse 2s ease-in-out infinite;
-    }
-    @keyframes dotPulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.5;transform:scale(.75);} }
-
-    /* Name + Custom row */
-    .entry-row {
-      display:flex; align-items:stretch; gap:12px;
-      max-width:100%; margin:0 auto 32px;
-    }
+    /* Entry row */
+    .entry-row { display:flex; align-items:stretch; gap:10px; max-width:100%; margin:0 auto 28px; }
     .entry-field {
       display:flex; align-items:center; gap:10px; flex:1;
-      background:var(--surface); border:1px solid var(--border); border-radius:16px;
-      padding:10px 16px; transition:box-shadow .2s; min-width:0;
+      background:var(--surface); border:1px solid var(--border); border-radius:14px;
+      padding:10px 14px; transition:box-shadow .2s; min-width:0;
     }
-    .entry-field:focus-within { box-shadow:0 0 0 2px var(--accent),0 0 20px rgba(0,229,160,.2); }
-    .entry-field.custom:focus-within { box-shadow:0 0 0 2px var(--accent2),0 0 20px rgba(0,153,255,.2); }
-    .entry-field label { font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap; }
-    .entry-field label.lbl-name { color:var(--accent); }
-    .entry-field label.lbl-room { color:var(--accent2); }
+    .entry-field:focus-within { box-shadow:0 0 0 2px var(--accent),0 0 18px rgba(0,229,160,.18); }
+    .entry-field.custom:focus-within { box-shadow:0 0 0 2px var(--accent2),0 0 18px rgba(0,153,255,.18); }
+    .entry-field label { font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap; }
+    .lbl-name { color:var(--accent); }
+    .lbl-room { color:var(--accent2); }
     .entry-field input { flex:1;background:none;border:none;color:var(--text);font-family:'DM Mono',monospace;font-size:14px;outline:none;min-width:0; }
     .entry-field input::placeholder { color:var(--muted); }
     .entry-join-btn {
       background:var(--accent2); color:#fff; border:none; border-radius:12px;
       font-family:'Syne',sans-serif; font-weight:700; font-size:13px;
-      padding:0 20px; cursor:pointer; letter-spacing:.04em; white-space:nowrap;
+      padding:0 20px; cursor:pointer; white-space:nowrap;
       transition:opacity .15s,transform .15s; flex-shrink:0;
     }
     .entry-join-btn:hover { opacity:.85; transform:translateY(-1px); }
-    @media(max-width:600px) {
-      .entry-row { flex-direction:column; }
-      .entry-join-btn { padding:12px; border-radius:12px; }
-    }
+    @media(max-width:600px) { .entry-row{flex-direction:column;} .entry-join-btn{padding:12px;} }
 
-    /* Section label */
-    .section-label { text-align:center;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:18px; }
+    /* Section labels */
+    .section-label { font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;text-align:center; }
 
-    /* Room grid */
-    .room-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:16px; }
-    @media(max-width:680px) { .room-grid { grid-template-columns:repeat(2,1fr); } }
-    @media(max-width:440px) { .room-grid { grid-template-columns:1fr; } }
+    /* ── Main room grid (9 preset slots, sorted by count) ── */
+    .room-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px; }
+    @media(max-width:680px) { .room-grid{grid-template-columns:repeat(2,1fr);} }
+    @media(max-width:440px) { .room-grid{grid-template-columns:1fr;} }
 
     .room-card {
       --c:#00e5a0;
-      position:relative; border-radius:18px; padding:22px 18px 16px; cursor:pointer;
+      position:relative; border-radius:16px; padding:20px 16px 14px; cursor:pointer;
       overflow:hidden; background:var(--surface); border:1px solid rgba(255,255,255,.07);
-      transition:transform .2s ease,box-shadow .2s ease; animation:cardIn .5s ease both;
+      transition:transform .2s,box-shadow .2s,order .4s; animation:cardIn .45s ease both;
       display:flex; flex-direction:column;
     }
-    @keyframes cardIn { from{opacity:0;transform:translateY(16px) scale(.97);} to{opacity:1;transform:none;} }
-    .room-card:nth-child(1){animation-delay:.04s} .room-card:nth-child(2){animation-delay:.08s}
-    .room-card:nth-child(3){animation-delay:.12s} .room-card:nth-child(4){animation-delay:.16s}
-    .room-card:nth-child(5){animation-delay:.20s} .room-card:nth-child(6){animation-delay:.24s}
-    .room-card:nth-child(7){animation-delay:.28s} .room-card:nth-child(8){animation-delay:.32s}
-    .room-card:nth-child(9){animation-delay:.36s} .room-card:nth-child(10){animation-delay:.40s}
-
+    @keyframes cardIn { from{opacity:0;transform:translateY(14px) scale(.97);} to{opacity:1;transform:none;} }
     .room-card::before {
-      content:''; position:absolute; inset:0; border-radius:18px; pointer-events:none;
-      background:radial-gradient(circle at 30% 30%, color-mix(in srgb,var(--c) 16%,transparent), transparent 65%);
+      content:''; position:absolute; inset:0; border-radius:16px; pointer-events:none;
+      background:radial-gradient(circle at 30% 30%, color-mix(in srgb,var(--c) 15%,transparent), transparent 65%);
     }
     .room-card::after {
-      content:''; position:absolute; inset:0; border-radius:18px; pointer-events:none;
-      border:1.5px solid var(--c); opacity:.28; transition:opacity .25s;
+      content:''; position:absolute; inset:0; border-radius:16px; pointer-events:none;
+      border:1.5px solid var(--c); opacity:.25; transition:opacity .25s;
     }
-    .room-card:hover { transform:translateY(-4px) scale(1.02); box-shadow:0 8px 36px color-mix(in srgb,var(--c) 28%,transparent); }
-    .room-card:hover::after { opacity:.85; }
+    .room-card:hover { transform:translateY(-4px) scale(1.02); box-shadow:0 8px 32px color-mix(in srgb,var(--c) 26%,transparent); }
+    .room-card:hover::after { opacity:.8; }
     .room-card:active { transform:scale(.98); }
 
-    .room-emoji { font-size:30px;margin-bottom:8px;display:block;filter:drop-shadow(0 0 5px var(--c));transition:filter .2s; }
+    .room-emoji { font-size:28px;margin-bottom:7px;display:block;filter:drop-shadow(0 0 5px var(--c));transition:filter .2s; }
     .room-card:hover .room-emoji { filter:drop-shadow(0 0 12px var(--c)); }
-    .room-name { font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px;transition:color .2s; }
+    .room-name { font-size:15px;font-weight:800;color:var(--text);margin-bottom:3px;transition:color .2s; }
     .room-card:hover .room-name { color:var(--c); }
-    .room-desc { font-size:11.5px;color:var(--muted);line-height:1.45;flex:1; }
+    .room-desc { font-size:11px;color:var(--muted);line-height:1.4;flex:1; }
 
     .room-tag-badge {
-      position:absolute;top:12px;right:12px;
-      font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.07em;
+      position:absolute;top:11px;right:11px;
+      font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.07em;
       background:color-mix(in srgb,var(--c) 14%,transparent);
       color:var(--c);border:1px solid color-mix(in srgb,var(--c) 35%,transparent);
-      border-radius:6px;padding:2px 7px;
+      border-radius:5px;padding:2px 6px;
     }
 
-    /* Live stats bar on each card */
+    /* Stats row */
     .room-stats {
-      display:flex; align-items:center; gap:10px;
-      margin-top:10px; padding-top:9px;
-      border-top:1px solid rgba(255,255,255,.07);
+      display:flex; align-items:center; gap:8px; margin-top:9px;
+      padding-top:8px; border-top:1px solid rgba(255,255,255,.06);
     }
-    .stat-item {
-      display:flex; align-items:center; gap:4px;
-      font-family:'DM Mono',monospace; font-size:11px; color:rgba(255,255,255,.45);
-      transition:color .2s;
-    }
-    .room-card:hover .stat-item { color:rgba(255,255,255,.7); }
-    .stat-item svg { width:12px;height:12px;flex-shrink:0;opacity:.7; }
-    .stat-num { font-size:11px; }
+    .stat-item { display:flex;align-items:center;gap:3px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.4);transition:color .2s; }
+    .room-card:hover .stat-item { color:rgba(255,255,255,.65); }
+    .stat-item svg { width:11px;height:11px;flex-shrink:0; }
+    .live-dot { width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 5px var(--c);margin-left:auto;flex-shrink:0;opacity:0;transition:opacity .3s; }
+    .live-dot.on { opacity:1;animation:dotPulse 2s ease-in-out infinite; }
 
-    /* Online dot on card */
-    .card-live-dot {
-      width:6px;height:6px;border-radius:50%;background:var(--c);
-      box-shadow:0 0 5px var(--c);margin-left:auto;flex-shrink:0;
-      opacity:0; transition:opacity .3s;
-    }
-    .card-live-dot.active { opacity:1; animation:dotPulse 2s ease-in-out infinite; }
-
-    /* Test room strip at bottom */
-    .test-room-strip {
+    /* ── Test room strip ── */
+    .test-strip {
       display:flex; align-items:center; gap:14px;
-      background:var(--surface); border:1px solid rgba(255,255,255,.1);
-      border-radius:14px; padding:14px 18px; max-width:1000px; margin:0 auto;
-      transition:box-shadow .2s; cursor:pointer;
+      background:var(--surface); border:1px solid rgba(255,255,255,.09);
+      border-radius:14px; padding:13px 16px; margin-bottom:20px;
+      cursor:pointer; transition:box-shadow .2s;
     }
-    .test-room-strip:hover { box-shadow:0 0 0 1.5px rgba(255,255,255,.2), 0 4px 20px rgba(0,0,0,.3); }
-    .test-emoji { font-size:22px; filter:drop-shadow(0 0 4px #aaa); }
-    .test-info { flex:1; }
+    .test-strip:hover { box-shadow:0 0 0 1.5px rgba(255,255,255,.18),0 4px 18px rgba(0,0,0,.3); }
+    .test-emoji { font-size:22px;flex-shrink:0; }
+    .test-info { flex:1;min-width:0; }
     .test-title { font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px; }
-    .test-desc { font-size:11.5px;color:var(--muted); }
-    .test-stats { display:flex;align-items:center;gap:10px; }
-    .test-join-btn {
-      background:var(--surface2); color:var(--text); border:1px solid var(--border);
-      border-radius:10px; font-family:'Syne',sans-serif; font-weight:700; font-size:12px;
-      padding:8px 16px; cursor:pointer; white-space:nowrap; transition:all .15s;
+    .test-desc { font-size:11px;color:var(--muted); }
+    .test-stats { display:flex;align-items:center;gap:8px;flex-shrink:0; }
+    .test-join { background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:9px;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;padding:7px 14px;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0; }
+    .test-join:hover { background:var(--border);transform:translateY(-1px); }
+
+    /* ── Other live rooms section ── */
+    .other-rooms-section { margin-top:4px; }
+    .other-rooms-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    @media(max-width:680px) { .other-rooms-grid{grid-template-columns:repeat(2,1fr);} }
+    @media(max-width:440px) { .other-rooms-grid{grid-template-columns:1fr;} }
+
+    .other-card {
+      --c:#aaaaff;
+      position:relative; border-radius:13px; padding:14px 14px 12px; cursor:pointer;
+      background:var(--surface); border:1px solid rgba(255,255,255,.06);
+      transition:transform .2s,box-shadow .2s; display:flex; flex-direction:column;
+      animation:cardIn .4s ease both;
     }
-    .test-join-btn:hover { background:var(--border); transform:translateY(-1px); }
+    .other-card::after { content:'';position:absolute;inset:0;border-radius:13px;pointer-events:none;border:1px solid var(--c);opacity:.2;transition:opacity .2s; }
+    .other-card:hover { transform:translateY(-3px); box-shadow:0 6px 24px color-mix(in srgb,var(--c) 22%,transparent); }
+    .other-card:hover::after { opacity:.7; }
+    .other-card:active { transform:scale(.98); }
+    .other-emoji { font-size:22px;margin-bottom:6px;display:block;filter:drop-shadow(0 0 4px var(--c)); }
+    .other-name { font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+    .other-card:hover .other-name { color:var(--c); }
+    .other-stats { display:flex;align-items:center;gap:6px;margin-top:7px;padding-top:7px;border-top:1px solid rgba(255,255,255,.05); }
+    .other-stat { display:flex;align-items:center;gap:3px;font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.4); }
+    .other-stat svg { width:10px;height:10px; }
 
     /* ── APP ── */
     #app { display:none; height:100vh; flex-direction:column; }
     #app.visible { display:flex; }
-    .app-header { display:flex;align-items:center;gap:12px;padding:0 20px;height:52px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0; }
-    .app-logo { font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);text-shadow:0 0 10px var(--accent); }
+    .app-header { display:flex;align-items:center;gap:12px;padding:0 18px;height:50px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0; }
+    .app-logo { font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);text-shadow:0 0 10px var(--accent); }
     .room-tag { font-family:'DM Mono',monospace;font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 10px;color:var(--muted); }
-    .header-spacer { flex:1; }
-    .app-online-badge {
-      display:flex; align-items:center; gap:6px;
-      font-family:'DM Mono',monospace; font-size:12px; color:#00ffcc;
-      background:rgba(0,255,200,.08); border:1px solid rgba(0,255,200,.25);
-      border-radius:20px; padding:4px 12px;
-    }
+    .hdr-spacer { flex:1; }
+    .app-hud { display:flex;flex-direction:column;align-items:flex-end;gap:2px; }
+    .app-online-pill { display:flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:11px;color:#00ffcc; }
     .app-online-dot { width:6px;height:6px;border-radius:50%;background:#00ffcc;box-shadow:0 0 6px #00ffcc;animation:dotPulse 2s ease-in-out infinite; }
+    .app-time { font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.35); }
 
-    .main-layout { display:flex;flex:1;overflow:hidden;position:relative; }
+    .main-layout { display:flex;flex:1;overflow:hidden; }
     .video-area { flex:1;background:#000;position:relative;overflow:hidden; }
     #jaas-container { width:100%;height:100%; }
 
-    /* ── CHAT PANEL ── */
+    /* ── CHAT ── */
     .chat-panel {
       width:340px;min-width:260px;max-width:55%;
-      border-left:1px solid rgba(0,255,157,.3);
+      border-left:1px solid rgba(0,255,157,.28);
       display:flex;flex-direction:column;
-      background:linear-gradient(180deg,#0f121a 0%,#0a0d14 100%);
-      box-shadow:inset 0 0 30px rgba(0,255,157,.08);
+      background:linear-gradient(180deg,#0f121a,#0a0d14);
+      box-shadow:inset 0 0 28px rgba(0,255,157,.07);
       position:relative;overflow:hidden;
     }
     .resize-handle { position:absolute;left:0;top:0;width:6px;height:100%;background:transparent;cursor:col-resize;z-index:10;transition:background .2s; }
-    .resize-handle:hover { background:rgba(0,255,157,.4); }
+    .resize-handle:hover { background:rgba(0,255,157,.38); }
     .chat-header {
-      padding:14px 18px;border-bottom:1px solid rgba(0,255,157,.3);
+      padding:13px 16px;border-bottom:1px solid rgba(0,255,157,.28);
       background:rgba(0,0,0,.4);font-weight:800;letter-spacing:.15em;
-      color:var(--accent);text-shadow:0 0 10px var(--accent),0 0 20px var(--accent);
-      position:relative;display:flex;align-items:center;justify-content:space-between;
+      color:var(--accent);text-shadow:0 0 10px var(--accent);
+      position:relative;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
     }
-    .chat-header::after { content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--neon-orange),transparent);box-shadow:0 0 15px var(--neon-orange); }
-    #chat-messages { flex:1;overflow-y:auto;padding:20px 16px;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth;background:rgba(5,7,13,.6); }
-    #chat-messages::-webkit-scrollbar { width:5px; }
+    .chat-header::after { content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--neon-orange),transparent);box-shadow:0 0 14px var(--neon-orange); }
+    #chat-messages { flex:1;overflow-y:auto;padding:18px 14px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth;background:rgba(5,7,13,.6); }
+    #chat-messages::-webkit-scrollbar { width:4px; }
     #chat-messages::-webkit-scrollbar-track { background:transparent; }
-    #chat-messages::-webkit-scrollbar-thumb { background:var(--neon-cyan);border-radius:10px;box-shadow:0 0 10px var(--neon-cyan); }
-    .msg { max-width:82%;padding:14px 18px;border-radius:18px;line-height:1.6;animation:neonPulseIn .5s ease-out; }
-    .msg.self { align-self:flex-end;background:linear-gradient(135deg,#00aaff88,#ff00aa66);border:1px solid #00aaff;color:#fff;box-shadow:0 0 8px #00aaff,0 0 16px #00aaff88; }
-    .msg:not(.self) { align-self:flex-start;background:linear-gradient(135deg,#00ff9d88,#ffaa0066);border:1px solid #00ff9d;color:#fff;box-shadow:0 0 8px #00ff9d,0 0 16px #00ff9d88; }
-    .msg .msg-meta { display:flex;align-items:baseline;gap:10px;margin-bottom:8px; }
-    .msg .msg-name { font-size:13.5px;font-weight:700;letter-spacing:.04em;text-shadow:0 0 6px currentColor; }
-    .msg .msg-time { font-family:'DM Mono',monospace;font-size:10.5px;color:rgba(255,255,255,.7); }
-    .msg .msg-text { font-size:15px;line-height:1.6;word-break:break-word; }
-    .system-msg { align-self:center;max-width:90%;text-align:center;font-size:11.5px;color:#ff8800;font-style:italic;background:rgba(255,102,0,.12);padding:10px 16px;border-radius:12px;margin:12px 0;box-shadow:0 0 20px rgba(255,102,0,.4);animation:glowPulse 3s infinite alternate; }
+    #chat-messages::-webkit-scrollbar-thumb { background:var(--neon-cyan);border-radius:10px; }
+    .msg { max-width:84%;padding:12px 16px;border-radius:16px;animation:neonPulseIn .45s ease-out; }
+    .msg.self { align-self:flex-end;background:linear-gradient(135deg,#00aaff88,#ff00aa66);border:1px solid #00aaff;color:#fff;box-shadow:0 0 8px #00aaff,0 0 14px #00aaff66; }
+    .msg:not(.self) { align-self:flex-start;background:linear-gradient(135deg,#00ff9d88,#ffaa0066);border:1px solid #00ff9d;color:#fff;box-shadow:0 0 8px #00ff9d,0 0 14px #00ff9d66; }
+    .msg .msg-meta { display:flex;align-items:baseline;gap:8px;margin-bottom:6px; }
+    .msg .msg-name { font-size:13px;font-weight:700;text-shadow:0 0 5px currentColor; }
+    .msg .msg-time { font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.65); }
+    .msg .msg-text { font-size:14px;line-height:1.55;word-break:break-word; }
+    .system-msg { align-self:center;max-width:90%;text-align:center;font-size:11px;color:#ff8800;font-style:italic;background:rgba(255,102,0,.1);padding:8px 14px;border-radius:10px;margin:8px 0;animation:glowPulse 3s infinite alternate; }
     @keyframes neonPulseIn { from{opacity:0;transform:scale(.92);} to{opacity:1;transform:scale(1);} }
-    @keyframes glowPulse { from{box-shadow:0 0 12px rgba(255,102,0,.3);} to{box-shadow:0 0 28px rgba(255,102,0,.7),0 0 40px rgba(255,102,0,.4);} }
-    .chat-input-area { padding:12px;border-top:1px solid rgba(0,255,157,.3);display:flex;gap:8px;background:rgba(0,0,0,.4); }
-    #chat-input { flex:1;background:rgba(10,15,25,.7);border:1px solid #00ff9d44;border-radius:10px;color:#fff;font-size:14px;padding:12px 16px;outline:none;transition:all .2s; }
-    #chat-input:focus { border-color:var(--neon-orange);box-shadow:inset 0 0 10px var(--neon-orange),0 0 16px var(--neon-orange),0 0 30px rgba(255,102,0,.5); }
-    .send-btn { background:linear-gradient(135deg,#ff6600,#ff8800);border:none;border-radius:10px;color:#fff;font-size:18px;width:44px;height:44px;cursor:pointer;box-shadow:0 0 12px #ff6600;transition:all .15s; }
+    @keyframes glowPulse { from{box-shadow:0 0 10px rgba(255,102,0,.2);} to{box-shadow:0 0 24px rgba(255,102,0,.6);} }
+    .chat-input-area { padding:10px;border-top:1px solid rgba(0,255,157,.28);display:flex;gap:8px;background:rgba(0,0,0,.38);flex-shrink:0; }
+    #chat-input { flex:1;background:rgba(10,15,25,.7);border:1px solid #00ff9d33;border-radius:10px;color:#fff;font-size:14px;padding:10px 14px;outline:none;transition:all .2s; }
+    #chat-input:focus { border-color:var(--neon-orange);box-shadow:inset 0 0 8px var(--neon-orange),0 0 14px var(--neon-orange); }
+    .send-btn { background:linear-gradient(135deg,#ff6600,#ff8800);border:none;border-radius:10px;color:#fff;font-size:17px;width:42px;height:42px;cursor:pointer;box-shadow:0 0 10px #ff6600;transition:all .15s;flex-shrink:0; }
     .send-btn:hover { transform:scale(1.08); }
-    .users-area { border-top:1px solid var(--border);padding:10px 14px 0; }
-    .users-label { font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px; }
-    .users-list { display:flex;flex-wrap:wrap;gap:8px;padding-bottom:10px; }
-    .user-pill { font-size:11.5px;background:rgba(0,255,157,.12);border:1px solid rgba(0,255,157,.4);border-radius:20px;padding:4px 12px;color:#fff;box-shadow:0 0 10px rgba(0,255,157,.3); }
-    .user-pill.me { background:rgba(255,102,0,.25);border-color:var(--neon-orange);box-shadow:0 0 14px var(--neon-orange); }
+    .users-area { border-top:1px solid var(--border);padding:9px 12px 0;flex-shrink:0; }
+    .users-label { font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px; }
+    .users-list { display:flex;flex-wrap:wrap;gap:6px;padding-bottom:9px; }
+    .user-pill { font-size:11px;background:rgba(0,255,157,.1);border:1px solid rgba(0,255,157,.35);border-radius:18px;padding:3px 10px;color:#fff;box-shadow:0 0 8px rgba(0,255,157,.25); }
+    .user-pill.me { background:rgba(255,102,0,.22);border-color:var(--neon-orange);box-shadow:0 0 12px var(--neon-orange); }
 
-    /* Settings modal */
-    #settings-modal { display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;align-items:center;justify-content:center; }
+    #settings-modal { display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;align-items:center;justify-content:center; }
 
-    @media(max-width:768px) {
-      .chat-panel { width:100% !important;max-width:none;min-width:auto; }
-      .resize-handle { display:none; }
-    }
+    @media(max-width:768px) { .chat-panel{width:100% !important;max-width:none;min-width:auto;} .resize-handle{display:none;} }
   </style>
 </head>
 <body>
 
-<!-- LOBBY -->
+<!-- ─── LOBBY ──────────────────────────────────────────────── -->
 <div id="lobby">
   <div class="lobby-bg">
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-    <div class="blob blob-3"></div>
+    <div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div>
   </div>
 
-  <!-- Total online badge -->
-  <div class="total-online-badge" id="total-online-badge">
-    <div class="total-online-dot"></div>
-    <span id="total-online-count">—</span> online
+  <!-- Top-right HUD: online + clock -->
+  <div class="top-hud">
+    <div class="total-online-badge">
+      <div class="online-dot"></div>
+      <span id="total-online-count">0</span>&nbsp;online
+    </div>
+    <div class="local-time" id="lobby-clock"></div>
   </div>
 
   <div class="lobby-inner">
@@ -302,7 +299,7 @@
       <p>Instant video &amp; text chat — pick a room or make your own</p>
     </div>
 
-    <!-- Name + Custom room on same row -->
+    <!-- Name + Custom room row -->
     <div class="entry-row">
       <div class="entry-field">
         <label class="lbl-name" for="name-input">Your name</label>
@@ -316,43 +313,48 @@
     </div>
 
     <div class="section-label">Choose a room</div>
+    <!-- 9-slot sorted grid. Slots are fixed; content moves -->
     <div class="room-grid" id="room-grid"></div>
 
     <!-- Test room strip -->
-    <div class="test-room-strip" id="test-room-strip">
+    <div class="test-strip" id="test-strip">
       <span class="test-emoji">🧪</span>
       <div class="test-info">
         <div class="test-title">Test Room</div>
-        <div class="test-desc">Try out camera, mic and chat before joining a real room</div>
+        <div class="test-desc">Try out camera, mic &amp; chat before joining a real room</div>
       </div>
       <div class="test-stats" id="test-stats">
-        <!-- populated by JS -->
+        <!-- filled by JS -->
       </div>
-      <button class="test-join-btn">Join Test →</button>
+      <button class="test-join">Join Test →</button>
+    </div>
+
+    <!-- Other live rooms (custom rooms with people in them) -->
+    <div class="other-rooms-section" id="other-rooms-section" style="display:none;">
+      <div class="section-label" style="margin-top:18px;">🔴 Other Live Rooms</div>
+      <div class="other-rooms-grid" id="other-rooms-grid"></div>
     </div>
   </div>
 </div>
 
-<!-- APP -->
+<!-- ─── APP ────────────────────────────────────────────────── -->
 <div id="app">
   <header class="app-header">
     <span class="app-logo">⬡ PeerRoom</span>
     <div class="room-tag" id="room-display"></div>
-    <div class="header-spacer"></div>
-    <div class="app-online-badge">
-      <div class="app-online-dot"></div>
-      <span id="app-online-count">—</span> online
+    <div class="hdr-spacer"></div>
+    <div class="app-hud">
+      <div class="app-online-pill"><div class="app-online-dot"></div><span id="app-online-count">0</span>&nbsp;online</div>
+      <div class="app-time" id="app-clock"></div>
     </div>
   </header>
   <div class="main-layout">
-    <div class="video-area">
-      <div id="jaas-container"></div>
-    </div>
+    <div class="video-area"><div id="jaas-container"></div></div>
     <div class="chat-panel" id="chat-panel">
       <div class="resize-handle" id="resize-handle"></div>
       <div class="chat-header">
         💬 Chat
-        <button id="settings-btn" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:16px;">⚙️</button>
+        <button id="settings-btn" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:15px;">⚙️</button>
       </div>
       <div id="chat-messages"></div>
       <div class="users-area">
@@ -367,7 +369,7 @@
   </div>
 </div>
 
-<!-- SETTINGS MODAL -->
+<!-- ─── SETTINGS MODAL ─────────────────────────────────────── -->
 <div id="settings-modal">
   <div style="background:var(--surface);padding:24px;border-radius:16px;width:320px;max-width:90%;">
     <h3 style="margin-bottom:16px;color:var(--accent);">Chat Settings</h3>
@@ -380,30 +382,35 @@
     </select>
     <label style="display:block;margin:12px 0 4px;"><input id="bold-check" type="checkbox" /> Bold name</label>
     <label style="display:block;margin:8px 0;"><input id="random-check" type="checkbox" checked /> Random color on join</label>
+    <label style="display:block;margin:8px 0;"><input id="sound-check" type="checkbox" checked /> Message bloop sounds</label>
     <div style="margin-top:20px;display:flex;gap:10px;">
-      <button id="save-settings-btn" style="flex:1;background:var(--accent);color:#000;padding:10px;border:none;border-radius:8px;cursor:pointer;">Save</button>
+      <button id="save-settings-btn" style="flex:1;background:var(--accent);color:#000;padding:10px;border:none;border-radius:8px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;">Save</button>
       <button id="close-settings-btn" style="flex:1;background:var(--surface2);padding:10px;border:none;border-radius:8px;cursor:pointer;color:var(--text);">Cancel</button>
     </div>
   </div>
 </div>
 
+<!-- ─── ALL APP LOGIC ──────────────────────────────────────── -->
 <script>
-(function() {
-
-  /* SVG icon helpers */
-  var ICONS = {
-    person: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
-    camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>',
-    screen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'
+(function () {
+  /* ── SVG icons ───────────────────────────────────────────── */
+  var IC = {
+    person: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
+    camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>',
+    screen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'
   };
-
-  function statsHtml(users, cameras, screens) {
-    return '<span class="stat-item">' + ICONS.person + '<span class="stat-num">' + users + '</span></span>' +
-           '<span class="stat-item">' + ICONS.camera + '<span class="stat-num">' + cameras + '</span></span>' +
-           '<span class="stat-item">' + ICONS.screen + '<span class="stat-num">' + screens + '</span></span>';
+  function statsHtml(u, c, s) {
+    return '<span class="stat-item">' + IC.person + '<span>' + u + '</span></span>' +
+           '<span class="stat-item">' + IC.camera + '<span>' + c + '</span></span>' +
+           '<span class="stat-item">' + IC.screen + '<span>' + s + '</span></span>';
+  }
+  function otherStatsHtml(u, c, s) {
+    return '<span class="other-stat">' + IC.person + '<span>' + u + '</span></span>' +
+           '<span class="other-stat">' + IC.camera + '<span>' + c + '</span></span>' +
+           '<span class="other-stat">' + IC.screen + '<span>' + s + '</span></span>';
   }
 
-  /* ── Preset rooms ── */
+  /* ── Preset rooms ─────────────────────────────────────────── */
   var PRESETS = [
     { id:'stoners',       name:'Stoners',       emoji:'🌿', desc:'Chill vibes only',        color:'#39d353' },
     { id:'gamers',        name:'Gamers',         emoji:'🎮', desc:"Let's play something",    color:'#00aaff' },
@@ -415,104 +422,216 @@
     { id:'night-owls',    name:'Night Owls',     emoji:'🦉', desc:'Up late, no rules',       color:'#7b61ff' },
     { id:'random',        name:'Random',         emoji:'🎲', desc:'Anything goes in here',   color:'#ff3399' }
   ];
+  var PRESET_IDS = PRESETS.map(function(r){ return r.id; });
 
-  /* ── State ── */
+  /* ── Random room emoji/color generator (for custom rooms) ── */
+  var RAND_EMOJIS = ['🚀','🌊','🔥','💎','🎯','🌙','⚡','🦋','🎪','🌈','🏴‍☠️','🎭','🦄','🌺','🎸','🍕','🤖','👾','🎲','💫','🌸','🔮','🎠','🌴','🧩','🪐','🦊','🎡','🐉','🌋'];
+  var RAND_COLORS = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#c77dff','#ff9a3c','#00b4d8','#f72585','#4cc9f0','#7bf1a8','#ffbe0b','#fb5607','#8338ec','#3a86ff','#06d6a0'];
+  function randRoomEmoji() { return RAND_EMOJIS[Math.floor(Math.random() * RAND_EMOJIS.length)]; }
+  function randRoomColor() { return RAND_COLORS[Math.floor(Math.random() * RAND_COLORS.length)]; }
+
+  /* ── State ────────────────────────────────────────────────── */
   var myName='', myRoomId='', myUserId='', jaasAPI=null;
   var userSettings = JSON.parse(localStorage.getItem('peerroom_chat_settings') || 'null') || {
-    nameColor:'#00ff9d', font:"'Syne',sans-serif", bold:false, randomOnJoin:true
+    nameColor:'#00ff9d', font:"'Syne',sans-serif", bold:false, randomOnJoin:true, sounds:true
   };
 
-  /* ── Build grid ── */
-  function buildGrid() {
-    var grid = document.getElementById('room-grid');
-    PRESETS.forEach(function(room, i) {
-      var card = document.createElement('div');
-      card.className = 'room-card';
-      card.style.setProperty('--c', room.color);
-      card.id = 'card-' + room.id;
-      card.innerHTML =
-        '<span class="room-tag-badge">#' + room.id + '</span>' +
-        '<span class="room-emoji">' + room.emoji + '</span>' +
-        '<div class="room-name">' + room.name + '</div>' +
-        '<div class="room-desc">' + room.desc + '</div>' +
-        '<div class="room-stats" id="stats-' + room.id + '">' +
-          statsHtml(0, 0, 0) +
-          '<div class="card-live-dot" id="dot-' + room.id + '"></div>' +
-        '</div>';
-      card.addEventListener('click', function() { enterRoom(room.id); });
-      grid.appendChild(card);
-    });
-
-    // Test room strip click
-    document.getElementById('test-room-strip').addEventListener('click', function() {
-      enterRoom('test');
-    });
+  /* ── Bloop sound (Web Audio API, no assets needed) ───────── */
+  var _audioCtx = null;
+  function getAudioCtx() {
+    if (!_audioCtx) {
+      try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+    }
+    return _audioCtx;
+  }
+  function playBloop(isSelf) {
+    if (!userSettings.sounds) return;
+    var ctx = getAudioCtx();
+    if (!ctx) return;
+    try {
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      // Self: higher pitch soft bloop. Other: lower softer bloop
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(isSelf ? 880 : 660, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(isSelf ? 440 : 330, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.25);
+    } catch(e){}
   }
 
-  /* ── Subscribe to live room stats for all preset rooms + test ── */
-  function subscribeRoomStats() {
-    var allRooms = PRESETS.map(function(r){ return r.id; }).concat(['test']);
+  /* ── Clock ────────────────────────────────────────────────── */
+  function updateClocks() {
+    var t = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    var lc = document.getElementById('lobby-clock');
+    var ac = document.getElementById('app-clock');
+    if (lc) lc.textContent = t;
+    if (ac) ac.textContent = t;
+  }
+  setInterval(updateClocks, 1000);
+  updateClocks();
 
-    // Total site presence ref
-    var totalRef;
+  /* ── Build preset grid ────────────────────────────────────── */
+  // We build 9 card slots. Data is swapped in when counts update.
+  var cardSlots = []; // array of 9 DOM elements
+  function buildGrid() {
+    var grid = document.getElementById('room-grid');
+    for (var i = 0; i < 9; i++) {
+      var card = document.createElement('div');
+      card.className = 'room-card';
+      card.dataset.slotIndex = i;
+      grid.appendChild(card);
+      cardSlots.push(card);
+    }
+    // Initial render in default order
+    renderSortedCards(PRESETS.map(function(r){ return { preset:r, users:0, cameras:0, screens:0 }; }));
 
-    function setupFirebase() {
+    // Test strip
+    document.getElementById('test-strip').addEventListener('click', function(){ enterRoom('test'); });
+  }
+
+  // Render sorted preset data into the 9 fixed card slots
+  function renderSortedCards(roomDataArr) {
+    // Sort by user count descending, preserve original order for ties
+    var sorted = roomDataArr.slice().sort(function(a,b){ return (b.users||0) - (a.users||0); });
+    for (var i = 0; i < 9 && i < sorted.length; i++) {
+      var d = sorted[i];
+      var r = d.preset;
+      var card = cardSlots[i];
+      card.style.setProperty('--c', r.color);
+      card.innerHTML =
+        '<span class="room-tag-badge">#' + r.id + '</span>' +
+        '<span class="room-emoji">' + r.emoji + '</span>' +
+        '<div class="room-name">' + r.name + '</div>' +
+        '<div class="room-desc">' + r.desc + '</div>' +
+        '<div class="room-stats">' + statsHtml(d.users, d.cameras, d.screens) +
+          '<div class="live-dot' + (d.users > 0 ? ' on' : '') + '"></div>' +
+        '</div>';
+      // Rebind click
+      (function(roomId) {
+        card.onclick = function(){ enterRoom(roomId); };
+      })(r.id);
+    }
+  }
+
+  /* Keep a live cache of preset room stats */
+  var presetStats = {}; // roomId -> {users,cameras,screens}
+  PRESETS.forEach(function(r){ presetStats[r.id] = {preset:r, users:0, cameras:0, screens:0}; });
+
+  function refreshGrid() {
+    renderSortedCards(PRESETS.map(function(r){ return presetStats[r.id]; }));
+  }
+
+  /* ── Subscribe to live stats ──────────────────────────────── */
+  function subscribeStats() {
+    function setup() {
       var fb = window._fb;
+      var allRooms = PRESET_IDS.concat(['test']);
 
-      // ── per-room user watchers ──
       allRooms.forEach(function(roomId) {
         fb.onValue(fb.ref(fb.db, 'rooms/' + roomId + '/users'), function(snap) {
           var users = snap.val() || {};
-          var userCount = Object.keys(users).length;
-          var camCount = 0, screenCount = 0;
+          var uCount = 0, camCount = 0, scrCount = 0;
           Object.keys(users).forEach(function(uid) {
             var u = users[uid];
-            if (u.hasCamera) camCount++;
-            if (u.hasScreen) screenCount++;
+            uCount++;
+            // hasCamera:true means camera is ON (not muted)
+            if (u.hasCamera === true) camCount++;
+            if (u.hasScreen === true) scrCount++;
           });
 
           if (roomId === 'test') {
             var ts = document.getElementById('test-stats');
-            if (ts) ts.innerHTML = statsHtml(userCount, camCount, screenCount);
+            if (ts) ts.innerHTML = statsHtml(uCount, camCount, scrCount);
           } else {
-            var statsEl = document.getElementById('stats-' + roomId);
-            var dotEl   = document.getElementById('dot-' + roomId);
-            if (statsEl) {
-              statsEl.innerHTML = statsHtml(userCount, camCount, screenCount) +
-                '<div class="card-live-dot' + (userCount > 0 ? ' active' : '') + '" id="dot-' + roomId + '"></div>';
-            }
+            presetStats[roomId].users   = uCount;
+            presetStats[roomId].cameras = camCount;
+            presetStats[roomId].screens = scrCount;
+            refreshGrid();
           }
         });
       });
 
-      // ── total site presence ──
-      // We track a global /presence node. Each session writes its userId there.
+      /* ── Global presence (all sessions) ──────────────────── */
       fb.onValue(fb.ref(fb.db, 'presence'), function(snap) {
         var count = snap.val() ? Object.keys(snap.val()).length : 0;
         document.getElementById('total-online-count').textContent = count;
-        var appEl = document.getElementById('app-online-count');
-        if (appEl) appEl.textContent = count;
+        var a = document.getElementById('app-online-count');
+        if (a) a.textContent = count;
+      });
+
+      /* ── Other live rooms (non-preset, non-test) ─────────── */
+      fb.onValue(fb.ref(fb.db, 'rooms'), function(snap) {
+        var allRoomsData = snap.val() || {};
+        var otherRooms = [];
+        Object.keys(allRoomsData).forEach(function(roomId) {
+          if (PRESET_IDS.indexOf(roomId) !== -1 || roomId === 'test') return;
+          var usersData = allRoomsData[roomId].users || {};
+          var uCount = Object.keys(usersData).length;
+          if (uCount === 0) return; // only show if someone is in it
+          var camCount = 0, scrCount = 0;
+          Object.keys(usersData).forEach(function(uid) {
+            if (usersData[uid].hasCamera === true) camCount++;
+            if (usersData[uid].hasScreen === true) scrCount++;
+          });
+          // Grab stored meta (emoji/color) or generate
+          var meta = allRoomsData[roomId].meta || {};
+          otherRooms.push({
+            id: roomId,
+            emoji: meta.emoji || '🚪',
+            color: meta.color || '#aaaaff',
+            users: uCount, cameras: camCount, screens: scrCount
+          });
+        });
+        // Sort by user count
+        otherRooms.sort(function(a,b){ return b.users - a.users; });
+        renderOtherRooms(otherRooms);
       });
     }
 
-    if (window._fb) { setupFirebase(); }
-    else { window.addEventListener('firebase-ready', setupFirebase, { once:true }); }
+    if (window._fb) { setup(); }
+    else { window.addEventListener('firebase-ready', setup, { once:true }); }
   }
 
-  /* ── Require name ── */
+  /* ── Render "Other Live Rooms" section ───────────────────── */
+  function renderOtherRooms(rooms) {
+    var section = document.getElementById('other-rooms-section');
+    var grid    = document.getElementById('other-rooms-grid');
+    if (!rooms.length) { section.style.display='none'; return; }
+    section.style.display = 'block';
+    grid.innerHTML = '';
+    rooms.forEach(function(r) {
+      var card = document.createElement('div');
+      card.className = 'other-card';
+      card.style.setProperty('--c', r.color);
+      card.innerHTML =
+        '<span class="other-emoji">' + r.emoji + '</span>' +
+        '<div class="other-name">#' + esc(r.id) + '</div>' +
+        '<div class="other-stats">' + otherStatsHtml(r.users, r.cameras, r.screens) + '</div>';
+      (function(rid){ card.addEventListener('click', function(){ enterRoom(rid); }); })(r.id);
+      grid.appendChild(card);
+    });
+  }
+
+  /* ── Name guard ───────────────────────────────────────────── */
   function requireName() {
     var n = document.getElementById('name-input').value.trim();
     if (!n) {
-      var nb = document.querySelector('.entry-field');
-      nb.style.boxShadow = '0 0 0 2px #ff4466, 0 0 20px rgba(255,68,102,.3)';
+      var f = document.querySelector('.entry-field');
+      f.style.boxShadow = '0 0 0 2px #ff4466, 0 0 18px rgba(255,68,102,.3)';
       document.getElementById('name-input').focus();
-      setTimeout(function(){ nb.style.boxShadow=''; }, 1800);
+      setTimeout(function(){ f.style.boxShadow=''; }, 1800);
       return null;
     }
     return n;
   }
 
-  /* ── Enter room ── */
+  /* ── Enter a room ─────────────────────────────────────────── */
   function enterRoom(roomId) {
     var name = requireName();
     if (!name) return;
@@ -531,31 +650,48 @@
         ? '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6,'0')
         : userSettings.nameColor;
 
-      // Room presence
+      // Write user into room
       var userRef = fb.ref(fb.db, 'rooms/' + roomId + '/users/' + myUserId);
+      // Start with hasCamera:false, hasScreen:false — JaaS events will update these
       fb.set(userRef, { name:myName, joined:Date.now(), color:myColor, hasCamera:false, hasScreen:false });
       fb.onDisconnect(userRef).remove();
+
+      // Store room meta for custom rooms (so "Other Live Rooms" can show emoji/color)
+      if (PRESET_IDS.indexOf(roomId) === -1 && roomId !== 'test') {
+        var metaRef = fb.ref(fb.db, 'rooms/' + roomId + '/meta');
+        fb.get(metaRef).then(function(snap) {
+          if (!snap.val()) {
+            fb.set(metaRef, { emoji: randRoomEmoji(), color: randRoomColor() });
+          }
+        }).catch(function(){
+          fb.set(metaRef, { emoji: randRoomEmoji(), color: randRoomColor() });
+        });
+      }
 
       // Global presence
       var presRef = fb.ref(fb.db, 'presence/' + myUserId);
       fb.set(presRef, { name:myName, room:roomId, ts:Date.now() });
       fb.onDisconnect(presRef).remove();
 
+      // Watch users for the user pill list
       fb.onValue(fb.ref(fb.db, 'rooms/' + roomId + '/users'), function(snap) {
         updateUserList(snap.val() || {});
       });
+      // Chat messages
       fb.onChildAdded(fb.ref(fb.db, 'rooms/' + roomId + '/chat'), function(snap) {
         var msg = snap.val() || {};
         addChatMsg(msg.name, msg.text, msg.time, msg.userId === myUserId, msg.color || '#ffffff');
       });
 
-      // Update camera/screen state when JaaS fires events (best-effort)
-      window._myUserRef = userRef;
+      // Expose ref for JaaS callbacks
+      window._myRoomId  = roomId;
+      window._myUserId  = myUserId;
     }
 
     if (window._fb) { doFirebase(); }
     else { window.addEventListener('firebase-ready', doFirebase, { once:true }); }
 
+    /* ── Start JaaS video ───────────────────────────────────── */
     function startVideo() {
       try {
         jaasAPI = new JitsiMeetExternalAPI('8x8.vc', {
@@ -578,19 +714,24 @@
           userInfo:{ displayName:name }
         });
 
-        // Track camera/screen state in Firebase
+        /* ── Write camera/screen state to Firebase via JaaS events ── */
         jaasAPI.addEventListeners({
+          videoConferenceJoined: function() {
+            // Once joined, assume camera starts ON (JaaS default).
+            // We'll rely on videoMuteStatusChanged to keep it accurate.
+            updateMyState('hasCamera', true);
+          },
           videoMuteStatusChanged: function(e) {
-            if (window._myUserRef && window._fb) {
-              window._fb.set(window._fb.ref(window._fb.db,
-                'rooms/' + roomId + '/users/' + myUserId + '/hasCamera'), !e.muted);
-            }
+            // e.muted = true means camera is OFF
+            updateMyState('hasCamera', !e.muted);
           },
           screenSharingStatusChanged: function(e) {
-            if (window._myUserRef && window._fb) {
-              window._fb.set(window._fb.ref(window._fb.db,
-                'rooms/' + roomId + '/users/' + myUserId + '/hasScreen'), e.on);
-            }
+            // e.on = true means screen share is active
+            updateMyState('hasScreen', !!e.on);
+          },
+          videoConferenceLeft: function() {
+            updateMyState('hasCamera', false);
+            updateMyState('hasScreen', false);
           }
         });
 
@@ -598,6 +739,12 @@
       } catch(err) {
         addSystemMsg('Video connection failed: ' + (err.message || 'Unknown error'));
       }
+    }
+
+    function updateMyState(field, value) {
+      if (!window._fb || !window._myRoomId || !window._myUserId) return;
+      var fb = window._fb;
+      fb.set(fb.ref(fb.db, 'rooms/' + window._myRoomId + '/users/' + window._myUserId + '/' + field), value);
     }
 
     if (typeof JitsiMeetExternalAPI !== 'undefined') { startVideo(); }
@@ -608,7 +755,7 @@
     }
   }
 
-  /* ── User list ── */
+  /* ── User pill list ───────────────────────────────────────── */
   function updateUserList(usersData) {
     var list = document.getElementById('users-list');
     list.innerHTML = '';
@@ -622,10 +769,10 @@
       list.appendChild(pill);
       count++;
     });
-    document.getElementById('user-count-label') && (document.getElementById('user-count-label').textContent = count + (count===1?' person':' people'));
   }
 
-  /* ── Chat ── */
+  /* ── Chat ─────────────────────────────────────────────────── */
+  var _isFirstLoad = true; // don't bloop on initial history load
   function addChatMsg(name, text, timestamp, isSelf, color) {
     var container = document.getElementById('chat-messages');
     var time = new Date(timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -639,6 +786,7 @@
       '<div class="msg-text">' + esc(text||'') + '</div>';
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
+    if (!_isFirstLoad) playBloop(isSelf);
   }
 
   function addSystemMsg(text) {
@@ -654,17 +802,17 @@
     var input = document.getElementById('chat-input');
     var text = input.value.trim();
     if (!text || !window._fb) return;
+    _isFirstLoad = false;
     window._fb.push(window._fb.ref(window._fb.db, 'rooms/' + myRoomId + '/chat'), {
       userId:myUserId, name:myName, text:text, time:Date.now(), color:userSettings.nameColor
     });
     input.value = '';
   }
 
-  function esc(str) {
-    return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
+  // After a short delay, allow bloops (lets initial message history load silently)
+  setTimeout(function(){ _isFirstLoad = false; }, 3000);
 
-  /* ── Resize ── */
+  /* ── Resize handle ────────────────────────────────────────── */
   function initResize() {
     var handle = document.getElementById('resize-handle');
     var panel  = document.getElementById('chat-panel');
@@ -684,12 +832,13 @@
     });
   }
 
-  /* ── Settings ── */
+  /* ── Settings ─────────────────────────────────────────────── */
   function openSettings() {
     document.getElementById('color-picker').value   = userSettings.nameColor;
     document.getElementById('font-select').value    = userSettings.font;
     document.getElementById('bold-check').checked   = userSettings.bold;
     document.getElementById('random-check').checked = userSettings.randomOnJoin;
+    document.getElementById('sound-check').checked  = (userSettings.sounds !== false);
     document.getElementById('settings-modal').style.display='flex';
   }
   function saveSettings() {
@@ -697,23 +846,29 @@
     userSettings.font         = document.getElementById('font-select').value;
     userSettings.bold         = document.getElementById('bold-check').checked;
     userSettings.randomOnJoin = document.getElementById('random-check').checked;
+    userSettings.sounds       = document.getElementById('sound-check').checked;
     localStorage.setItem('peerroom_chat_settings', JSON.stringify(userSettings));
     document.getElementById('settings-modal').style.display='none';
     addSystemMsg('Settings saved!');
   }
 
-  /* ── Init ── */
+  /* ── Escape HTML ──────────────────────────────────────────── */
+  function esc(str) {
+    return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* ── Init ─────────────────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', function() {
     buildGrid();
     initResize();
-    subscribeRoomStats();
+    subscribeStats();
 
     document.getElementById('custom-join-btn').addEventListener('click', function() {
       var raw = document.getElementById('room-input').value.trim().replace(/\s+/g,'-').toLowerCase();
       enterRoom(raw || 'general');
     });
     document.getElementById('room-input').addEventListener('keydown', function(e) {
-      if (e.key==='Enter') { var raw=this.value.trim().replace(/\s+/g,'-').toLowerCase(); enterRoom(raw||'general'); }
+      if (e.key==='Enter') { enterRoom(this.value.trim().replace(/\s+/g,'-').toLowerCase() || 'general'); }
     });
     document.getElementById('name-input').addEventListener('keydown', function(e) {
       if (e.key==='Enter') document.getElementById('room-input').focus();
@@ -725,11 +880,23 @@
     document.getElementById('close-settings-btn').addEventListener('click', function() {
       document.getElementById('settings-modal').style.display='none';
     });
+    // Unlock audio context on first user interaction (browser policy)
+    document.addEventListener('click', function() { getAudioCtx(); }, { once:true });
 
     var hash = location.hash.replace('#','').trim();
     if (hash) document.getElementById('room-input').value = hash;
     document.getElementById('name-input').focus();
   });
+
+  // Expose for potential external use
+  window._peerroom = { enterRoom: enterRoom };
+
+  function getAudioCtx() {
+    if (!_audioCtx) {
+      try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+    }
+    return _audioCtx;
+  }
 
 })();
 </script>
