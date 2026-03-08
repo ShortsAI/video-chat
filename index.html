@@ -6,10 +6,8 @@
   <title>PeerRoom — Instant Video Chat</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <!-- PeerJS CDN - confirmed 1.5.5 stable -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js"></script>
   <style>
-    /* Your full styles here - unchanged from last version */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg: #0b0d11;
@@ -165,7 +163,7 @@
   <div class="lobby-card">
     <div class="logo">⬡ PeerRoom</div>
     <h1>Jump in.<br/>No signup needed.</h1>
-    <p>Instant video &amp; text chat. Share the room link with anyone to connect.</p>
+    <p>Instant video &amp; text chat. Allow camera/mic when prompted. Share exact Peer ID to connect.</p>
     <label for="name-input">Your name</label>
     <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off" />
     <label for="room-input">Room ID</label>
@@ -181,7 +179,7 @@
     <span class="peer-id-display">My Peer ID: <span id="my-peer-id">connecting...</span></span>
     <div class="header-spacer"></div>
     <div class="call-input-area">
-      <input id="remote-peer-id" class="call-input" placeholder="Enter peer ID to call" />
+      <input id="remote-peer-id" class="call-input" placeholder="Paste peer ID to call" />
       <button class="call-btn" onclick="callPeer()">Call</button>
     </div>
     <div class="user-count"><span class="dot"></span> <span id="user-count-label">1 person</span></div>
@@ -218,6 +216,14 @@ let myPeerId = '';
 let localStream = null;
 let calls = {};
 
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' }
+];
+
 document.addEventListener('DOMContentLoaded', () => {
   const hash = location.hash.replace('#', '').trim();
   if (hash) document.getElementById('room-input').value = hash;
@@ -235,7 +241,7 @@ window.joinRoom = async function() {
   myName = name;
   myRoomId = roomId;
 
-  addSystemMsg('Joining room... Requesting camera & mic access...');
+  addSystemMsg('Joining... Requesting camera & mic (allow in popup)...');
 
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -243,65 +249,64 @@ window.joinRoom = async function() {
     addVideoTile('local', myName, localStream, true);
   } catch (e) {
     console.error('Media error:', e);
-    addSystemMsg('Failed to access camera/mic: ' + e.message + '. Video may not work.');
+    addSystemMsg('Camera/mic access failed: ' + e.message + '. Check permissions and reload.');
   }
 
   document.getElementById('room-display').textContent = '# ' + roomId;
   document.getElementById('lobby').style.display = 'none';
   document.getElementById('app').classList.add('visible');
 
-  addSystemMsg(`You joined #${roomId} as ${name}`);
+  addSystemMsg(`Joined #${roomId} as ${name}`);
+  updateUserList(); // Show self in list
 
-  // Initialize PeerJS with explicit config for better reliability
-  addSystemMsg('Connecting to Peer server...');
+  addSystemMsg('Connecting to PeerJS signaling server... (may take 5-15s)');
   peer = new Peer({
     host: '0.peerjs.com',
     port: 443,
     path: '/',
     secure: true,
-    debug: 2 // Show logs in console for debugging
+    config: { iceServers: ICE_SERVERS },
+    debug: 3  // Verbose logging for troubleshooting
   });
 
   peer.on('open', (id) => {
     myPeerId = id;
     document.getElementById('my-peer-id').textContent = id;
-    addSystemMsg(`Connected! Your Peer ID: ${id} (share this to let others call you)`);
+    addSystemMsg(`Connected! Your Peer ID: ${id} — copy & share exact ID with others to connect.`);
   });
 
   peer.on('error', (err) => {
     console.error('PeerJS error:', err);
-    addSystemMsg('Peer connection error: ' + err.type + ' - ' + err.message);
+    addSystemMsg(`Peer error: ${err.type} - ${err.message || 'Unknown'}. Try refresh or different network.`);
   });
 
-  // Incoming call handler
   peer.on('call', (call) => {
     if (localStream) {
       call.answer(localStream);
       handleCall(call);
     } else {
-      addSystemMsg('Incoming call but no local stream available.');
+      addSystemMsg('Incoming call, but no local stream.');
     }
   });
 
-  // Timeout if no ID after 10s
   setTimeout(() => {
     if (!myPeerId) {
-      addSystemMsg('Peer connection taking too long or failed. Check console (F12) for errors. Try refreshing.');
+      addSystemMsg('Peer connection slow/failed. Check console (F12) → Network tab for websocket to peerjs.com. Try different browser/network.');
     }
-  }, 10000);
+  }, 15000);
 };
 
 function callPeer() {
   const remoteId = document.getElementById('remote-peer-id').value.trim();
   if (!remoteId) {
-    addSystemMsg('Enter a peer ID first.');
+    addSystemMsg('Paste a valid peer ID first.');
     return;
   }
   if (!localStream) {
-    addSystemMsg('No local camera stream - allow access first.');
+    addSystemMsg('No local camera — allow access and try again.');
     return;
   }
-  addSystemMsg(`Calling peer ${remoteId}...`);
+  addSystemMsg(`Attempting call to ${remoteId}...`);
   const call = peer.call(remoteId, localStream);
   handleCall(call);
 }
@@ -309,18 +314,18 @@ function callPeer() {
 function handleCall(call) {
   calls[call.peer] = call;
   call.on('stream', (remoteStream) => {
-    addSystemMsg(`Connected to ${call.peer}!`);
+    addSystemMsg(`Connected to ${call.peer}! Video should appear.`);
     addVideoTile(call.peer, call.peer.substring(0,8) + '...', remoteStream, false);
   });
   call.on('close', () => {
-    addSystemMsg(`Call with ${call.peer} ended.`);
+    addSystemMsg(`Call with ${call.peer} closed.`);
     const tile = document.getElementById('tile-' + call.peer);
     if (tile) tile.remove();
     delete calls[call.peer];
   });
   call.on('error', (err) => {
     console.error('Call error:', err);
-    addSystemMsg('Call error with ' + call.peer);
+    addSystemMsg(`Call failed for ${call.peer}: ${err.message || 'Unknown'}`);
   });
 }
 
@@ -375,7 +380,6 @@ window.leaveRoom = function() {
   location.reload();
 };
 
-// Local chat functions (unchanged)
 window.sendChat = function() {
   const input = document.getElementById('chat-input');
   const message = input.value.trim();
@@ -407,6 +411,16 @@ function addSystemMsg(text) {
   div.textContent = text;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
+}
+
+function updateUserList() {
+  const list = document.getElementById('users-list');
+  list.innerHTML = '';
+  const pill = document.createElement('div');
+  pill.className = 'user-pill me';
+  pill.textContent = myName || 'You';
+  list.appendChild(pill);
+  document.getElementById('user-count-label').textContent = '1 person';
 }
 
 function escapeHtml(str) {
