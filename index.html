@@ -598,7 +598,7 @@ let userSettings = JSON.parse(localStorage.getItem('peerroom_chat_settings')) ||
   randomOnJoin: true
 };
 
-let userColors = {}; // Cache of { userId: color }
+let userColors = {}; // { userId: color }
 
 // Resize logic
 let isResizing = false;
@@ -626,6 +626,7 @@ document.addEventListener('mouseup', () => {
   document.body.style.cursor = 'default';
 });
 
+// Join room
 window.joinRoom = async function() {
   const name = document.getElementById('name-input').value.trim();
   let roomId = document.getElementById('room-input').value.trim().replace(/\s+/g, '-').toLowerCase() || 'general';
@@ -642,19 +643,26 @@ window.joinRoom = async function() {
   document.getElementById('lobby').style.display = 'none';
   document.getElementById('app').classList.add('visible');
 
+  // Choose color
   let myColor = userSettings.randomOnJoin 
     ? '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')
     : userSettings.nameColor;
 
   const userRef = firebase.ref(db, `rooms/${roomId}/users/${myUserId}`);
-  await firebase.set(userRef, { name: myName, joined: Date.now(), color: myColor });
+  await firebase.set(userRef, {
+    name: myName,
+    joined: Date.now(),
+    color: myColor
+  });
   firebase.onDisconnect(userRef).remove();
 
+  // Watch users (includes colors)
   firebase.onValue(firebase.ref(db, `rooms/${roomId}/users`), snap => {
     const users = snap.val() || {};
     updateUserList(users);
   });
 
+  // Chat messages (include sender's color)
   firebase.onChildAdded(firebase.ref(db, `rooms/${roomId}/chat`), snap => {
     const msg = snap.val();
     addChatMsg(msg.name, msg.text, msg.time, msg.userId === myUserId, msg.color || '#ffffff');
@@ -708,7 +716,7 @@ function updateUserList(usersData) {
   let count = 0;
   for (const uid in usersData) {
     const u = usersData[uid];
-    userColors[u.name] = u.color || '#ffffff';
+    userColors[uid] = u.color || '#ffffff';
     const pill = document.createElement('div');
     pill.className = 'user-pill' + (u.name === myName ? ' me' : '');
     pill.style.color = u.color || '#ffffff';
@@ -815,7 +823,7 @@ window.saveSettings = function() {
   userSettings.randomOnJoin = document.getElementById('random-check').checked;
   localStorage.setItem('peerroom_chat_settings', JSON.stringify(userSettings));
   closeSettings();
-  addSystemMsg('Settings saved! New color applies on next join if random is enabled.');
+  addSystemMsg('Settings saved! Your new color will apply on next join if random is enabled.');
 };
 
 window.closeSettings = function() {
