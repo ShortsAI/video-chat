@@ -324,7 +324,7 @@
     #chat-messages {
       flex: 1;
       overflow-y: auto;
-      padding: 16px;
+      padding: 20px 16px; /* increased padding to prevent text cutoff */
       display: flex;
       flex-direction: column;
       gap: 14px;
@@ -340,18 +340,19 @@
     }
     .msg {
       max-width: 82%;
-      padding: 12px 16px;
-      border-radius: 16px;
-      line-height: 1.45;
+      padding: 14px 18px; /* more vertical padding so text doesn't touch bottom */
+      border-radius: 18px;
+      line-height: 1.55; /* increased line-height to give breathing room */
       animation: neonPulseIn 0.6s ease-out;
       position: relative;
-      overflow: hidden;
+      overflow: visible; /* ensure text isn't clipped */
+      min-height: 28px; /* prevent very short messages from looking squished */
     }
     .msg::before {
       content: '';
       position: absolute;
       inset: 0;
-      border-radius: 16px;
+      border-radius: 18px;
       pointer-events: none;
       box-shadow: inset 0 0 12px rgba(255,255,255,0.08);
     }
@@ -376,10 +377,10 @@
         0 0 32px #ff660044;
     }
     .msg .msg-meta {
-      display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px;
+      display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px;
     }
     .msg .msg-name {
-      font-size: 13px;
+      font-size: 13.5px;
       font-weight: 700;
       letter-spacing: 0.04em;
       text-shadow: 0 0 6px currentColor;
@@ -388,14 +389,16 @@
     .msg:not(.self) .msg-name { color: #ffdd00; text-shadow: 0 0 10px #ffdd00; }
     .msg .msg-time {
       font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      color: rgba(255,255,255,0.6);
-      opacity: 0.7;
+      font-size: 10.5px;
+      color: rgba(255,255,255,0.7);
+      opacity: 0.8;
     }
     .msg .msg-text {
-      font-size: 14.5px;
-      line-height: 1.5;
+      font-size: 15px;
+      line-height: 1.6;
       text-shadow: 0 0 3px rgba(0,0,0,0.6);
+      word-break: break-word;
+      overflow-wrap: break-word;
     }
     .system-msg {
       align-self: center;
@@ -405,9 +408,9 @@
       color: #ff8800;
       font-style: italic;
       background: rgba(255,102,0,0.12);
-      padding: 8px 14px;
+      padding: 10px 16px;
       border-radius: 12px;
-      margin: 10px 0;
+      margin: 12px 0;
       box-shadow: 0 0 20px rgba(255,102,0,0.4);
       animation: glowPulse 3s infinite alternate;
     }
@@ -433,7 +436,7 @@
       border-radius: 10px;
       color: white;
       font-size: 14px;
-      padding: 10px 14px;
+      padding: 12px 16px;
       outline: none;
       transition: all 0.2s;
       box-shadow: inset 0 0 10px rgba(0,255,157,0.12);
@@ -716,7 +719,7 @@ function updateUserList(usersData) {
   let count = 0;
   for (const uid in usersData) {
     const u = usersData[uid];
-    userColors[uid] = u.color || '#ffffff';
+    userColors[u.name] = u.color || '#ffffff';
     const pill = document.createElement('div');
     pill.className = 'user-pill' + (u.name === myName ? ' me' : '');
     pill.style.color = u.color || '#ffffff';
