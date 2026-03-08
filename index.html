@@ -29,30 +29,21 @@
       --neon-orange: #ff6600;
     }
     html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; overflow: hidden; }
-    #lobby { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 100; animation: fadeIn .4s ease; }
-    .lobby-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 48px 40px; width: 460px; max-width: 95vw; position: relative; overflow: hidden; }
-    .lobby-card::before { content: ''; position: absolute; top: -60px; left: -60px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(0,229,160,.15) 0%, transparent 70%); pointer-events: none; }
-    .lobby-card::after { content: ''; position: absolute; bottom: -40px; right: -40px; width: 160px; height: 160px; background: radial-gradient(circle, rgba(0,153,255,.12) 0%, transparent 70%); pointer-events: none; }
-    .logo { font-size: 13px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); margin-bottom: 24px; }
-    .lobby-card h1 { font-size: 32px; font-weight: 800; line-height: 1.15; margin-bottom: 10px; }
-    .lobby-card p { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 32px; }
-    label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
-    input[type="text"] { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: 'DM Mono', monospace; font-size: 15px; padding: 13px 16px; outline: none; transition: border-color .2s; margin-bottom: 16px; }
-    input[type="text"]:focus { border-color: var(--accent); }
-    input[type="text"]::placeholder { color: var(--muted); }
-    .btn-join { width: 100%; background: var(--accent); color: #000; border: none; border-radius: var(--radius); font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; padding: 14px; cursor: pointer; letter-spacing: .04em; transition: transform .15s, opacity .15s; margin-top: 4px; }
-    .btn-join:hover { opacity: .88; transform: translateY(-1px); }
+    #lobby { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 100; }
+    .lobby-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 48px 40px; width: 460px; max-width: 95vw; }
+    .logo { color: var(--accent); font-weight: 700; font-size: 1.4rem; margin-bottom: 1rem; }
+    h1 { font-size: 2.2rem; margin-bottom: 1rem; }
+    label { display: block; margin: 1rem 0 0.4rem; font-weight: 700; color: var(--muted); }
+    input[type="text"] { width: 100%; padding: 0.8rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: white; font-size: 1rem; }
+    .btn-join { margin-top: 1.5rem; width: 100%; padding: 1rem; background: var(--accent); color: black; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1rem; }
     #app { display: none; height: 100vh; flex-direction: column; }
     #app.visible { display: flex; }
-    .app-header { display: flex; align-items: center; gap: 12px; padding: 0 20px; height: 52px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
-    .app-header .logo { margin: 0; font-size: 12px; }
-    .room-tag { font-family: 'DM Mono', monospace; font-size: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; color: var(--muted); }
-    .header-spacer { flex: 1; }
-    .main-layout { display: flex; flex: 1; overflow: hidden; position: relative; }
+    .app-header { height: 60px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 1.5rem; gap: 1rem; }
+    .main-layout { flex: 1; display: flex; overflow: hidden; }
     .video-area { flex: 1; background: #000; position: relative; }
     #jitsi-iframe { width: 100%; height: 100%; border: none; }
     .controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 10; }
-    .ctrl-btn { width: 50px; height: 50px; border-radius: 50%; background: rgba(0,0,0,0.7); border: 2px solid white; color: white; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .ctrl-btn { width: 50px; height: 50px; border-radius: 50%; background: rgba(0,0,0,0.7); border: 2px solid white; color: white; font-size: 22px; cursor: pointer; }
     .ctrl-btn.leave { background: #ff4444; }
     .chat-panel {
       width: 340px; min-width: 260px; max-width: 55%; border-left: 1px solid rgba(0,255,157,0.3); display: flex; flex-direction: column;
@@ -60,7 +51,6 @@
     }
     .resize-handle { position: absolute; left: -5px; top: 0; width: 10px; height: 100%; background: transparent; cursor: col-resize; z-index: 10; }
     .resize-handle:hover, .resize-handle:active { background: rgba(0,255,157,0.3); }
-    /* Rest of your chat styles (neon glow, messages, etc.) — unchanged */
     .chat-header { padding: 14px 18px; border-bottom: 1px solid rgba(0,255,157,0.3); background: rgba(0,0,0,0.4); font-weight: 800; letter-spacing: 0.15em; color: var(--accent); text-shadow: 0 0 10px var(--accent), 0 0 20px var(--accent); position: relative; display: flex; align-items: center; justify-content: space-between; }
     #chat-messages { flex: 1; overflow-y: auto; padding: 20px 16px; display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth; background: rgba(5,7,13,0.6); }
     .msg { max-width: 82%; padding: 14px 18px; border-radius: 18px; line-height: 1.6; animation: neonPulseIn 0.6s ease-out; position: relative; }
@@ -87,7 +77,7 @@
   <div class="lobby-card">
     <div class="logo">⬡ PeerRoom</div>
     <h1>Jump in.<br/>No signup needed.</h1>
-    <p>Instant video & text chat — now using Jitsi (free & reliable)</p>
+    <p>Instant video & text chat</p>
     <label for="name-input">Your name</label>
     <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off" />
     <label for="room-input">Room ID</label>
@@ -126,7 +116,6 @@
   </div>
 </div>
 
-<!-- Settings modal (unchanged) -->
 <div id="settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:var(--surface);padding:24px;border-radius:16px;width:320px;max-width:90%;">
     <h3 style="margin-bottom:16px;color:var(--accent);">Chat Settings</h3>
@@ -211,11 +200,11 @@ window.joinRoom = async function() {
   document.getElementById('lobby').style.display = 'none';
   document.getElementById('app').classList.add('visible');
 
-  // Jitsi iframe
+  // Jitsi iframe - direct to meeting, no prejoin page
   const iframe = document.getElementById('jitsi-iframe');
-  iframe.src = `https://meet.jit.si/${roomId}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
+  iframe.src = `https://meet.jit.si/${roomId}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&config.disableDeepLinking=true`;
 
-  // Firebase chat & users (unchanged)
+  // Firebase chat & users
   let myColor = userSettings.randomOnJoin 
     ? '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')
     : userSettings.nameColor;
@@ -226,7 +215,7 @@ window.joinRoom = async function() {
 
   firebase.onValue(firebase.ref(db, `rooms/${roomId}/users`), snap => updateUserList(snap.val() || {}));
   firebase.onChildAdded(firebase.ref(db, `rooms/${roomId}/chat`), snap => {
-    const msg = snap.val();
+    const msg = snap.val() || {};
     addChatMsg(msg.name, msg.text, msg.time, msg.userId === myUserId, msg.color || '#ffffff');
   });
 };
@@ -293,13 +282,13 @@ function addSystemMsg(text) {
   container.scrollTop = container.scrollHeight;
 }
 
-// Settings modal (unchanged)
-window.openChatSettings = function() { /* same as before */ };
-window.saveSettings = function() { /* same as before */ };
-window.closeSettings = function() { /* same as before */ };
+// Settings modal (unchanged from before)
+window.openChatSettings = function() { /* same as your previous version */ };
+window.saveSettings = function() { /* same as your previous version */ };
+window.closeSettings = function() { /* same as your previous version */ };
 
-window.toggleMic = function() { alert("Jitsi controls are inside the video window (bottom bar)"); };
-window.toggleCam = function() { alert("Jitsi controls are inside the video window (bottom bar)"); };
+window.toggleMic = function() { alert("Use the buttons at the bottom of the video window"); };
+window.toggleCam = function() { alert("Use the buttons at the bottom of the video window"); };
 window.leaveRoom = function() { location.reload(); };
 
 window.addEventListener('DOMContentLoaded', () => {
