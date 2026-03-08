@@ -13,9 +13,9 @@
     window.firebase = { initializeApp, getDatabase, ref, set, onValue, push, onDisconnect, remove, onChildAdded };
   </script>
   <!-- LiveKit Client SDK -->
-  <script src="https://unpkg.com/livekit-client@2/dist/livekit-client.umd.js"></script>
-  <!-- LiveKit Server SDK (for token generation in browser - testing only) -->
-  <script src="https://unpkg.com/livekit-server-sdk@2/dist/livekit-server-sdk.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.5.9/dist/livekit-client.umd.min.js"></script>
+  <!-- LiveKit Server SDK for token generation (testing only) -->
+  <script src="https://cdn.jsdelivr.net/npm/livekit-server-sdk@2.5.9/dist/livekit-server-sdk.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -37,6 +37,8 @@
     html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; overflow: hidden; }
     #lobby { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 100; animation: fadeIn .4s ease; }
     .lobby-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 48px 40px; width: 460px; max-width: 95vw; position: relative; overflow: hidden; }
+    .lobby-card::before { content: ''; position: absolute; top: -60px; left: -60px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(0,229,160,.15) 0%, transparent 70%); pointer-events: none; }
+    .lobby-card::after { content: ''; position: absolute; bottom: -40px; right: -40px; width: 160px; height: 160px; background: radial-gradient(circle, rgba(0,153,255,.12) 0%, transparent 70%); pointer-events: none; }
     .logo { font-size: 13px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); margin-bottom: 24px; }
     .lobby-card h1 { font-size: 32px; font-weight: 800; line-height: 1.15; margin-bottom: 10px; }
     .lobby-card p { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 32px; }
@@ -109,7 +111,7 @@
   <div class="lobby-card">
     <div class="logo">⬡ PeerRoom</div>
     <h1>Jump in.<br/>No signup needed.</h1>
-    <p>Instant video & text chat — now powered by LiveKit</p>
+    <p>Instant video & text chat — LiveKit powered</p>
     <label for="name-input">Your name</label>
     <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off" />
     <label for="room-input">Room ID</label>
@@ -264,7 +266,6 @@ window.joinRoom = async function() {
   document.getElementById('lobby').style.display = 'none';
   document.getElementById('app').classList.add('visible');
 
-  // Random color if enabled
   let myColor = userSettings.randomOnJoin 
     ? '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')
     : userSettings.nameColor;
@@ -287,8 +288,9 @@ window.joinRoom = async function() {
   livekitRoom = new LiveKit.Room();
 
   livekitRoom.on(LiveKit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+    console.log('Track subscribed:', track.kind, 'from', participant?.identity);
     if (track.kind === 'video') {
-      addRemoteVideo(track, participant.identity);
+      addRemoteVideo(track, participant?.identity || 'Remote');
     }
   });
 
@@ -300,16 +302,27 @@ window.joinRoom = async function() {
     addSystemMsg(`${participant.identity} left the room`);
   });
 
+  livekitRoom.on(LiveKit.RoomEvent.Disconnected, () => {
+    addSystemMsg('Disconnected from video room');
+  });
+
   try {
     const token = generateToken(roomId, myName);
+    console.log('Connecting with token...');
     await livekitRoom.connect(LIVEKIT_URL, token);
+    console.log('Connected to room:', livekitRoom.name);
 
+    // Publish local tracks
+    console.log('Requesting local tracks...');
     const tracks = await LiveKit.createLocalTracks({
-      video: true,
+      video: { facingMode: 'user' },
       audio: true
     });
 
+    console.log('Local tracks acquired:', tracks.length);
+
     tracks.forEach(track => {
+      console.log('Publishing track:', track.kind);
       livekitRoom.localParticipant.publishTrack(track);
       if (track.kind === 'video') {
         localVideoTrack = track;
@@ -320,14 +333,17 @@ window.joinRoom = async function() {
     });
 
   } catch (err) {
-    console.error('LiveKit error:', err);
-    addSystemMsg('Failed to connect to video room: ' + err.message);
+    console.error('LiveKit connection/publish failed:', err);
+    addSystemMsg('Video connection error: ' + (err.message || 'Unknown error'));
   }
 };
 
 function addLocalVideo(track) {
+  console.log('Adding local video track');
   const el = track.attach();
   el.muted = true;
+  el.autoplay = true;
+  el.playsInline = true;
   const tile = document.createElement('div');
   tile.className = 'video-tile local';
   tile.appendChild(el);
@@ -339,7 +355,10 @@ function addLocalVideo(track) {
 }
 
 function addRemoteVideo(track, identity) {
+  console.log('Adding remote video from:', identity);
   const el = track.attach();
+  el.autoplay = true;
+  el.playsInline = true;
   const tile = document.createElement('div');
   tile.className = 'video-tile';
   tile.appendChild(el);
@@ -351,16 +370,21 @@ function addRemoteVideo(track, identity) {
 }
 
 window.toggleMic = function() {
-  if (localAudioTrack) localAudioTrack.setEnabled(!localAudioTrack.isEnabled);
+  if (localAudioTrack) {
+    localAudioTrack.setEnabled(!localAudioTrack.isEnabled);
+    document.getElementById('btn-mic').textContent = localAudioTrack.isEnabled ? '🎙️' : '🔇';
+  }
 };
 
 window.toggleCam = function() {
-  if (localVideoTrack) localVideoTrack.setEnabled(!localVideoTrack.isEnabled);
+  if (localVideoTrack) {
+    localVideoTrack.setEnabled(!localVideoTrack.isEnabled);
+    document.getElementById('btn-cam').textContent = localVideoTrack.isEnabled ? '📷' : '🚫';
+  }
 };
 
 window.leaveRoom = function() {
   if (livekitRoom) livekitRoom.disconnect();
-  if (localStream) localStream.getTracks().forEach(t => t.stop());
   location.reload();
 };
 
@@ -400,17 +424,24 @@ function updateUserList(usersData) {
 function addChatMsg(name, text, timestamp, isSelf, color = '#ffffff') {
   const container = document.getElementById('chat-messages');
   const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const safeName = name || 'Unknown';
+  const safeText = text || '';
   const div = document.createElement('div');
   div.className = `msg${isSelf ? ' self' : ''}`;
   div.innerHTML = `
     <div class="msg-meta">
-      <span class="msg-name" style="color:${color}">${escapeHtml(name)}</span>
+      <span class="msg-name" style="color:${color}">${escapeHtml(safeName)}</span>
       <span class="msg-time">${time}</span>
     </div>
-    <div class="msg-text">${escapeHtml(text)}</div>
+    <div class="msg-text">${escapeHtml(safeText)}</div>
   `;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(str) {
+  if (str == null) return ''; // prevent crash on undefined/null
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function addSystemMsg(text) {
@@ -420,10 +451,6 @@ function addSystemMsg(text) {
   div.textContent = text;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
-}
-
-function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 window.openChatSettings = function() {
