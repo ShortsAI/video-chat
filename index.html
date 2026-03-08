@@ -12,8 +12,6 @@
     import { getDatabase, ref, set, onValue, push, onDisconnect, remove, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     window.firebase = { initializeApp, getDatabase, ref, set, onValue, push, onDisconnect, remove, onChildAdded };
   </script>
-  <!-- LiveKit Client SDK from cdnjs (reliable mirror) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/livekit-client/2.5.9/livekit-client.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -100,6 +98,7 @@
     .users-list { padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 8px; background: rgba(0,0,0,0.3); }
     .user-pill { font-size: 11.5px; background: rgba(0,255,157,0.12); border: 1px solid rgba(0,255,157,0.4); border-radius: 20px; padding: 4px 12px; color: white; box-shadow: 0 0 10px rgba(0,255,157,0.3); text-shadow: 0 0 4px currentColor; }
     .user-pill.me { background: rgba(255,102,0,0.25); border-color: var(--neon-orange); box-shadow: 0 0 14px var(--neon-orange); }
+    #video-error { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff4444; background: rgba(0,0,0,0.7); padding: 20px; border-radius: 12px; max-width: 80%; text-align: center; z-index: 10; display: none; }
     @media (max-width: 768px) { .chat-panel { width: 100% !important; max-width: none; min-width: auto; } .resize-handle { display: none; } }
   </style>
 </head>
@@ -128,6 +127,7 @@
   <div class="main-layout">
     <div class="video-area" id="video-area">
       <div id="video-grid"></div>
+      <div id="video-error">Camera/mic access denied or failed.<br>Please check browser permissions and refresh.</div>
       <div class="controls">
         <button class="ctrl-btn" id="btn-mic" title="Toggle mic" onclick="toggleMic()">🎙️</button>
         <button class="ctrl-btn" id="btn-cam" title="Toggle camera" onclick="toggleCam()">📷</button>
@@ -235,53 +235,56 @@ document.addEventListener('mouseup', () => {
   document.body.style.cursor = 'default';
 });
 
-// Simple JWT token generator (no server-sdk dependency)
-function generateToken(roomName, participantName) {
-  if (typeof LiveKit === 'undefined' || !LiveKit.Room) {
-    console.error('LiveKit client not loaded');
-    addSystemMsg('Error: Video SDK failed to load. Please refresh the page.');
+// Base64URL encode helper
+function b64u(str) {
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// Native browser token signing (HMAC-SHA256)
+async function generateToken(roomName, participantName) {
+  try {
+    const header = b64u(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+    const payload = b64u(JSON.stringify({
+      iss: API_KEY,
+      sub: participantName,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      grants: {
+        video: {
+          roomJoin: true,
+          room: roomName,
+          canPublish: true,
+          canSubscribe: true,
+          canPublishData: true
+        }
+      }
+    }));
+
+    const unsigned = `${header}.${payload}`;
+
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(API_SECRET),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+
+    const signature = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(unsigned)
+    );
+
+    const sigB64 = b64u(String.fromCharCode(...new Uint8Array(signature)));
+
+    return `${unsigned}.${sigB64}`;
+  } catch (err) {
+    console.error('Token signing failed:', err);
+    addSystemMsg('Failed to generate secure token: ' + err.message);
     return null;
   }
-
-  // Base64URL encode helper
-  const b64u = str => btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-  const header = b64u(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const payload = b64u(JSON.stringify({
-    iss: API_KEY,
-    sub: participantName,
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour
-    grants: {
-      video: {
-        roomJoin: true,
-        room: roomName,
-        canPublish: true,
-        canSubscribe: true,
-        canPublishData: true
-      }
-    }
-  }));
-
-  const unsigned = `${header}.${payload}`;
-
-  // HMAC-SHA256 signature (browser crypto)
-  return crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(API_SECRET),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  ).then(key => {
-    return crypto.subtle.sign('HMAC', key, new TextEncoder().encode(unsigned));
-  }).then(sig => {
-    const signature = b64u(String.fromCharCode(...new Uint8Array(sig)));
-    return `${unsigned}.${signature}`;
-  }).catch(err => {
-    console.error('Token generation failed:', err);
-    addSystemMsg('Failed to generate video token: ' + err.message);
-    return null;
-  });
 }
 
 window.joinRoom = async function() {
@@ -315,9 +318,12 @@ window.joinRoom = async function() {
     addChatMsg(msg.name, msg.text, msg.time, msg.userId === myUserId, msg.color || '#ffffff');
   });
 
+  // Check LiveKit client
   if (typeof LiveKit === 'undefined' || !LiveKit.Room) {
     console.error('LiveKit client SDK not loaded');
-    addSystemMsg('Error: Video SDK failed to load. Please refresh the page or try another browser.');
+    addSystemMsg('Critical error: Video system failed to load. Please refresh the page or contact support.');
+    document.getElementById('video-error').textContent = 'Video SDK not loaded – please refresh';
+    document.getElementById('video-error').style.display = 'block';
     return;
   }
 
@@ -358,11 +364,16 @@ window.joinRoom = async function() {
       audio: true
     }).catch(err => {
       console.error('createLocalTracks failed:', err);
-      addSystemMsg('Could not access camera/mic: ' + (err.message || 'Permission denied or device error'));
+      document.getElementById('video-error').textContent = 'Camera/mic access denied or unavailable. Please allow in browser settings.';
+      document.getElementById('video-error').style.display = 'block';
       return [];
     });
 
     console.log('Local tracks acquired:', tracks.length);
+
+    if (tracks.length === 0) {
+      addSystemMsg('No camera or microphone detected.');
+    }
 
     tracks.forEach(track => {
       console.log('Publishing track:', track.kind);
@@ -377,7 +388,9 @@ window.joinRoom = async function() {
 
   } catch (err) {
     console.error('LiveKit connection/publish failed:', err);
-    addSystemMsg('Video connection error: ' + (err.message || 'Unknown error - check console'));
+    addSystemMsg('Video connection error: ' + (err.message || 'Unknown error'));
+    document.getElementById('video-error').textContent = 'Video error: ' + (err.message || 'Connection failed');
+    document.getElementById('video-error').style.display = 'block';
   }
 };
 
@@ -395,6 +408,7 @@ function addLocalVideo(track) {
   label.textContent = myName + ' (you)';
   tile.appendChild(label);
   document.getElementById('video-grid').appendChild(tile);
+  document.getElementById('video-error').style.display = 'none';
 }
 
 function addRemoteVideo(track, identity) {
