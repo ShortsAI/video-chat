@@ -403,7 +403,7 @@
   <div class="lobby-card">
     <div class="logo">⬡ PeerRoom</div>
     <h1>Jump in.<br/>No signup needed.</h1>
-    <p>Instant video &amp; text chat. Share the room link or Peer ID with anyone to connect.</p>
+    <p>Instant video & text chat. Allow camera/mic. Copy your Peer ID and paste it in the other tab to connect.</p>
     <label for="name-input">Your name</label>
     <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off" />
     <label for="room-input">Room ID</label>
@@ -418,10 +418,8 @@
     <div class="room-tag" id="room-display"></div>
     <span class="peer-id-display">My Peer ID: <span id="my-peer-id">connecting...</span></span>
     <div class="header-spacer"></div>
-    <div class="call-input-area">
-      <input id="remote-peer-id" class="call-input" placeholder="Paste peer ID to call" />
-      <button class="call-btn" onclick="callPeer()">Call</button>
-    </div>
+    <input id="remote-peer-id" type="text" placeholder="Paste peer ID here" style="padding:6px 10px; font-size:12px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text);" />
+    <button onclick="callPeer()" style="background:var(--accent2); color:#fff; border:none; border-radius:6px; padding:6px 12px; cursor:pointer; font-weight:600;">Call</button>
     <div class="user-count"><span class="dot"></span> <span id="user-count-label">1 person</span></div>
   </header>
   <div class="main-layout">
@@ -434,15 +432,14 @@
       </div>
     </div>
     <div class="chat-panel">
-      <div class="chat-header">💬 Chat (synced via PeerJS)</div>
+      <div class="chat-header">💬 Chat (synced)</div>
       <div id="chat-messages"></div>
       <div id="users-area" style="border-top:1px solid var(--border); padding:10px 14px 0;">
         <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">In room</div>
         <div class="users-list" id="users-list"></div>
       </div>
       <div class="chat-input-area">
-        <input id="chat-input" type="text" placeholder="Say something…" maxlength="500"
-               onkeydown="if(event.key==='Enter') sendChat()" />
+        <input id="chat-input" type="text" placeholder="Say something…" maxlength="500" onkeydown="if(event.key==='Enter') sendChat()" />
         <button class="send-btn" onclick="sendChat()">➤</button>
       </div>
     </div>
@@ -455,14 +452,11 @@ let myRoomId = '';
 let peer = null;
 let myPeerId = '';
 let localStream = null;
-let connections = {};     // data channels for chat & users
-let remoteStreams = {};   // for remote video
-let users = new Set([/* will add self */]);
+let connections = {};  // { peerId: { mediaCall, dataConn } }
 
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
   { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
   { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
 ];
@@ -470,10 +464,7 @@ const ICE_SERVERS = [
 window.joinRoom = async function() {
   const name = document.getElementById('name-input').value.trim();
   let roomId = document.getElementById('room-input').value.trim().replace(/\s+/g, '-').toLowerCase() || 'general';
-  if (!name) {
-    alert('Please enter your name.');
-    return;
-  }
+  if (!name) return alert('Enter your name');
 
   myName = name;
   myRoomId = roomId;
@@ -485,16 +476,12 @@ window.joinRoom = async function() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     addVideoTile('local', myName, localStream, true);
-  } catch (e) {
-    console.error('Media error:', e);
-    addSystemMsg('Camera/mic access denied or unavailable.');
+  } catch (err) {
+    addSystemMsg('Camera/mic access denied.');
   }
 
-  addSystemMsg(`You joined #${roomId} as ${name}`);
-  users.add(myName);
-  updateUserList();
+  addSystemMsg(`Joined as ${name}`);
 
-  // Initialize PeerJS
   peer = new Peer({
     host: '0.peerjs.com',
     port: 443,
@@ -504,74 +491,69 @@ window.joinRoom = async function() {
     debug: 2
   });
 
-  peer.on('open', (id) => {
+  peer.on('open', id => {
     myPeerId = id;
     document.getElementById('my-peer-id').textContent = id;
-    addSystemMsg(`Your Peer ID: ${id} (share this to connect)`);
+    addSystemMsg(`Your Peer ID: ${id} — share this`);
   });
 
-  peer.on('connection', (conn) => {
-    connections[conn.peer] = conn;
-    conn.on('open', () => {
-      conn.send({ type: 'join', name: myName });
-      // Send current user list to new peer
-      conn.send({ type: 'users', users: Array.from(users) });
-    });
-    conn.on('data', (data) => handleData(conn.peer, data));
+  peer.on('connection', conn => {
+    setupDataChannel(conn);
   });
 
-  peer.on('call', (call) => {
-    if (localStream) {
-      call.answer(localStream);
-      handleCall(call);
-    }
+  peer.on('call', call => {
+    call.answer(localStream);
+    setupMediaCall(call);
   });
 
-  peer.on('error', (err) => {
-    console.error('PeerJS error:', err);
+  peer.on('error', err => {
+    console.error(err);
     addSystemMsg('Peer error: ' + err.message);
   });
 };
 
 function callPeer() {
-  const remoteId = document.getElementById('remote-peer-id').value.trim();
-  if (!remoteId || !peer) return addSystemMsg('Enter a valid peer ID.');
+  const id = document.getElementById('remote-peer-id').value.trim();
+  if (!id) return;
 
   // Media call
-  const mediaCall = peer.call(remoteId, localStream);
-  handleCall(mediaCall);
+  const mediaCall = peer.call(id, localStream);
+  setupMediaCall(mediaCall);
 
   // Data channel for chat/users
-  const dataConn = peer.connect(remoteId);
-  connections[remoteId] = dataConn;
-  dataConn.on('open', () => {
-    dataConn.send({ type: 'join', name: myName });
-    dataConn.send({ type: 'users', users: Array.from(users) });
-  });
-  dataConn.on('data', (data) => handleData(remoteId, data));
+  const dataConn = peer.connect(id);
+  setupDataChannel(dataConn);
 }
 
-function handleCall(call) {
-  call.on('stream', (remoteStream) => {
-    addVideoTile(call.peer, 'Remote', remoteStream, false);
+function setupMediaCall(call) {
+  call.on('stream', stream => {
+    addVideoTile(call.peer, 'Remote', stream, false);
   });
   call.on('close', () => {
     document.getElementById('tile-' + call.peer)?.remove();
   });
-  call.on('error', (err) => console.error('Call error:', err));
+  call.on('error', err => console.error('Media call error', err));
 }
 
-function handleData(peerId, data) {
-  if (data.type === 'join') {
-    users.add(data.name);
-    updateUserList();
-    addSystemMsg(`${data.name} joined the room`);
-  } else if (data.type === 'users') {
-    data.users.forEach(name => users.add(name));
-    updateUserList();
-  } else if (data.type === 'chat') {
-    addChatMsg(data.name, data.message, Date.now(), false);
-  }
+function setupDataChannel(conn) {
+  conn.on('open', () => {
+    conn.send(JSON.stringify({ type: 'join', name: myName }));
+  });
+
+  conn.on('data', raw => {
+    const data = JSON.parse(raw);
+    if (data.type === 'join') {
+      addSystemMsg(`${data.name} joined`);
+      // Send back our name
+      conn.send(JSON.stringify({ type: 'join', name: myName }));
+    } else if (data.type === 'chat') {
+      addChatMsg(data.name, data.message, Date.now(), false);
+    }
+  });
+
+  conn.on('close', () => {
+    addSystemMsg('Data connection closed');
+  });
 }
 
 window.sendChat = function() {
@@ -580,9 +562,13 @@ window.sendChat = function() {
   if (!message) return;
 
   addChatMsg(myName, message, Date.now(), true);
-  Object.values(connections).forEach(conn => {
-    if (conn.open) conn.send({ type: 'chat', name: myName, message });
+
+  Object.values(peer.connections).flat().forEach(conn => {
+    if (conn.open) {
+      conn.send(JSON.stringify({ type: 'chat', name: myName, message }));
+    }
   });
+
   input.value = '';
 };
 
@@ -635,22 +621,24 @@ function addVideoTile(id, name, stream, isLocal) {
 }
 
 window.toggleMic = function() {
-  if (!localStream) return;
-  const track = localStream.getAudioTracks()[0];
-  if (track) {
-    track.enabled = !track.enabled;
-    document.getElementById('btn-mic').textContent = track.enabled ? '🎙️' : '🔇';
-    document.getElementById('btn-mic').classList.toggle('off', !track.enabled);
+  if (localStream) {
+    const track = localStream.getAudioTracks()[0];
+    if (track) {
+      track.enabled = !track.enabled;
+      document.getElementById('btn-mic').textContent = track.enabled ? '🎙️' : '🔇';
+      document.getElementById('btn-mic').classList.toggle('off', !track.enabled);
+    }
   }
 };
 
 window.toggleCam = function() {
-  if (!localStream) return;
-  const track = localStream.getVideoTracks()[0];
-  if (track) {
-    track.enabled = !track.enabled;
-    document.getElementById('btn-cam').textContent = track.enabled ? '📷' : '🚫';
-    document.getElementById('btn-cam').classList.toggle('off', !track.enabled);
+  if (localStream) {
+    const track = localStream.getVideoTracks()[0];
+    if (track) {
+      track.enabled = !track.enabled;
+      document.getElementById('btn-cam').textContent = track.enabled ? '📷' : '🚫';
+      document.getElementById('btn-cam').classList.toggle('off', !track.enabled);
+    }
   }
 };
 
@@ -658,18 +646,6 @@ window.leaveRoom = function() {
   if (localStream) localStream.getTracks().forEach(t => t.stop());
   if (peer) peer.destroy();
   location.reload();
-};
-
-function updateUserList() {
-  const list = document.getElementById('users-list');
-  list.innerHTML = '';
-  users.forEach(name => {
-    const pill = document.createElement('div');
-    pill.className = 'user-pill' + (name === myName ? ' me' : '');
-    pill.textContent = name;
-    list.appendChild(pill);
-  });
-  document.getElementById('user-count-label').textContent = users.size + ' people';
 }
 
 function escapeHtml(str) {
