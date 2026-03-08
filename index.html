@@ -3,11 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PeerBase — Instant Video Chat</title>
+  <title>PeerRoom — Instant Video Chat</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, set, onValue, push, onDisconnect, remove, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    window.firebase = { initializeApp, getDatabase, ref, set, onValue, push, onDisconnect, remove, onChildAdded };
+  </script>
   <!-- LiveKit Client SDK -->
   <script src="https://unpkg.com/livekit-client@2/dist/livekit-client.umd.js"></script>
+  <!-- LiveKit Server SDK (for token generation in browser - testing only) -->
+  <script src="https://unpkg.com/livekit-server-sdk@2/dist/livekit-server-sdk.umd.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -21,220 +29,122 @@
       --text: #e8eaf0;
       --muted: #6b7280;
       --radius: 12px;
+      --neon-cyan: #00ffff;
+      --neon-orange: #ff6600;
+      --neon-magenta: #ff00aa;
+      --neon-lime: #39ff14;
     }
-    html, body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Syne', sans-serif;
-      overflow: hidden;
-    }
-    #lobby {
-      position: fixed; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--bg);
-      z-index: 100;
-    }
-    .lobby-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 48px 40px;
-      width: 460px;
-      max-width: 95vw;
-    }
-    .logo { color: var(--accent); font-weight: 700; font-size: 1.4rem; margin-bottom: 1rem; }
-    h1 { font-size: 2.2rem; margin-bottom: 1rem; }
-    label { display: block; margin: 1rem 0 0.4rem; font-weight: 700; color: var(--muted); }
-    input[type="text"] {
-      width: 100%;
-      padding: 0.8rem;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: white;
-      font-size: 1rem;
-    }
-    .btn-join {
-      margin-top: 1.5rem;
-      width: 100%;
-      padding: 1rem;
-      background: var(--accent);
-      color: black;
-      font-weight: bold;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1.1rem;
-    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; overflow: hidden; }
+    #lobby { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 100; animation: fadeIn .4s ease; }
+    .lobby-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 48px 40px; width: 460px; max-width: 95vw; position: relative; overflow: hidden; }
+    .logo { font-size: 13px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); margin-bottom: 24px; }
+    .lobby-card h1 { font-size: 32px; font-weight: 800; line-height: 1.15; margin-bottom: 10px; }
+    .lobby-card p { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 32px; }
+    label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+    input[type="text"] { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: 'DM Mono', monospace; font-size: 15px; padding: 13px 16px; outline: none; transition: border-color .2s; margin-bottom: 16px; }
+    input[type="text"]:focus { border-color: var(--accent); }
+    input[type="text"]::placeholder { color: var(--muted); }
+    .btn-join { width: 100%; background: var(--accent); color: #000; border: none; border-radius: var(--radius); font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; padding: 14px; cursor: pointer; letter-spacing: .04em; transition: transform .15s, opacity .15s; margin-top: 4px; }
+    .btn-join:hover { opacity: .88; transform: translateY(-1px); }
     #app { display: none; height: 100vh; flex-direction: column; }
     #app.visible { display: flex; }
-    .app-header {
-      height: 60px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      padding: 0 1.5rem;
-      gap: 1rem;
-    }
-    .main-layout {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-    }
-    .video-area {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background: black;
-    }
-    #video-grid {
-      flex: 1;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 8px;
-      padding: 16px;
-      overflow-y: auto;
-    }
-    .video-tile {
-      position: relative;
-      background: #111;
-      border-radius: 12px;
-      overflow: hidden;
-      aspect-ratio: 16 / 9;
-    }
-    .video-tile video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .tile-label {
-      position: absolute;
-      bottom: 8px;
-      left: 12px;
-      background: rgba(0,0,0,0.6);
-      color: white;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 0.9rem;
-    }
-    .controls {
-      padding: 16px;
-      background: var(--surface);
-      display: flex;
-      justify-content: center;
-      gap: 1.5rem;
-    }
-    .ctrl-btn {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: white;
-      font-size: 1.4rem;
-      cursor: pointer;
-    }
-    .ctrl-btn.leave { background: #ff4444; }
+    .app-header { display: flex; align-items: center; gap: 12px; padding: 0 20px; height: 52px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+    .app-header .logo { margin: 0; font-size: 12px; }
+    .room-tag { font-family: 'DM Mono', monospace; font-size: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; color: var(--muted); }
+    .header-spacer { flex: 1; }
+    .main-layout { display: flex; flex: 1; overflow: hidden; position: relative; }
+    .video-area { flex: 1; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; transition: flex 0.2s ease; }
+    #video-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; padding: 14px; overflow-y: auto; align-content: start; }
+    .video-tile { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; aspect-ratio: 16/9; animation: tileIn .3s ease; }
+    @keyframes tileIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+    .video-tile video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .video-tile .tile-label { position: absolute; bottom: 10px; left: 12px; background: rgba(0,0,0,.65); backdrop-filter: blur(8px); border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 600; color: #fff; }
+    .video-tile.local { border-color: var(--accent); }
+    .video-tile.local .tile-label::after { content: ' (you)'; color: var(--accent); }
+    .controls { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 14px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+    .ctrl-btn { width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .2s, border-color .2s, transform .15s; }
+    .ctrl-btn:hover { background: var(--border); transform: scale(1.08); }
+    .ctrl-btn.off { background: rgba(255,68,102,.15); border-color: var(--danger); color: var(--danger); }
+    .ctrl-btn.leave { background: var(--danger); border-color: var(--danger); color: #fff; }
+    .ctrl-btn.leave:hover { opacity: .85; }
     .chat-panel {
-      width: 320px;
-      background: var(--surface);
-      border-left: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
+      width: 340px; min-width: 260px; max-width: 55%; border-left: 1px solid rgba(0,255,157,0.3); display: flex; flex-direction: column;
+      background: linear-gradient(180deg, #0f121a 0%, #0a0d14 100%); box-shadow: inset 0 0 30px rgba(0,255,157,0.08); position: relative; overflow: hidden; transition: width 0.1s ease;
     }
+    .resize-handle { position: absolute; left: -5px; top: 0; width: 10px; height: 100%; background: transparent; cursor: col-resize; z-index: 10; }
+    .resize-handle:hover, .resize-handle:active { background: rgba(0,255,157,0.3); }
     .chat-header {
-      padding: 16px;
-      background: var(--surface2);
-      font-weight: bold;
-      border-bottom: 1px solid var(--border);
+      padding: 14px 18px; border-bottom: 1px solid rgba(0,255,157,0.3); background: rgba(0,0,0,0.4); font-weight: 800; letter-spacing: 0.15em;
+      color: var(--accent); text-shadow: 0 0 10px var(--accent), 0 0 20px var(--accent); position: relative; display: flex; align-items: center; justify-content: space-between;
     }
-    #chat-messages {
-      flex: 1;
-      padding: 16px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .msg {
-      max-width: 80%;
-      padding: 10px 14px;
-      border-radius: 18px;
-    }
-    .msg.self {
-      align-self: flex-end;
-      background: var(--accent);
-      color: black;
-    }
-    .msg.other {
-      align-self: flex-start;
-      background: #333;
-    }
-    .chat-input-area {
-      padding: 12px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      gap: 8px;
-    }
-    #chat-input {
-      flex: 1;
-      padding: 10px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: white;
-    }
-    .send-btn {
-      padding: 10px 16px;
-      background: var(--accent);
-      color: black;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
+    .chat-header::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--neon-orange), transparent); box-shadow: 0 0 15px var(--neon-orange); }
+    #chat-messages { flex: 1; overflow-y: auto; padding: 20px 16px; display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth; background: rgba(5,7,13,0.6); }
+    #chat-messages::-webkit-scrollbar { width: 5px; }
+    #chat-messages::-webkit-scrollbar-track { background: transparent; }
+    #chat-messages::-webkit-scrollbar-thumb { background: var(--neon-cyan); border-radius: 10px; box-shadow: 0 0 10px var(--neon-cyan); }
+    .msg { max-width: 82%; padding: 14px 18px; border-radius: 18px; line-height: 1.6; animation: neonPulseIn 0.6s ease-out; position: relative; overflow: visible; }
+    .msg.self { align-self: flex-end; background: linear-gradient(135deg, #00aaff88, #ff00aa66); border: 1px solid #00aaff; color: white; box-shadow: 0 0 8px #00aaff, 0 0 16px #00aaff88, 0 0 32px #ff00aa44; }
+    .msg:not(.self) { align-self: flex-start; background: linear-gradient(135deg, #00ff9d88, #ffaa0066); border: 1px solid #00ff9d; color: white; box-shadow: 0 0 8px #00ff9d, 0 0 16px #00ff9d88, 0 0 32px #ff660044; }
+    .msg .msg-meta { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+    .msg .msg-name { font-size: 13.5px; font-weight: 700; letter-spacing: 0.04em; text-shadow: 0 0 6px currentColor; }
+    .msg .msg-time { font-family: 'DM Mono', monospace; font-size: 10.5px; color: rgba(255,255,255,0.7); }
+    .msg .msg-text { font-size: 15px; line-height: 1.6; text-shadow: 0 0 3px rgba(0,0,0,0.6); word-break: break-word; }
+    .system-msg { align-self: center; max-width: 90%; text-align: center; font-size: 11.5px; color: #ff8800; font-style: italic; background: rgba(255,102,0,0.12); padding: 10px 16px; border-radius: 12px; margin: 12px 0; box-shadow: 0 0 20px rgba(255,102,0,0.4); animation: glowPulse 3s infinite alternate; }
+    @keyframes neonPulseIn { from { opacity: 0; transform: scale(0.92); box-shadow: none; } to { opacity: 1; transform: scale(1); } }
+    @keyframes glowPulse { from { box-shadow: 0 0 12px rgba(255,102,0,0.3); } to { box-shadow: 0 0 28px rgba(255,102,0,0.7), 0 0 40px rgba(255,102,0,0.4); } }
+    .chat-input-area { padding: 12px; border-top: 1px solid rgba(0,255,157,0.3); display: flex; gap: 8px; background: rgba(0,0,0,0.4); }
+    #chat-input { flex: 1; background: rgba(10,15,25,0.7); border: 1px solid #00ff9d44; border-radius: 10px; color: white; font-size: 14px; padding: 12px 16px; outline: none; transition: all 0.2s; box-shadow: inset 0 0 10px rgba(0,255,157,0.12); }
+    #chat-input:focus { border-color: var(--neon-orange); box-shadow: inset 0 0 10px var(--neon-orange), 0 0 16px var(--neon-orange), 0 0 30px rgba(255,102,0,0.5); }
+    .send-btn { background: linear-gradient(135deg, #ff6600, #ff8800); border: none; border-radius: 10px; color: white; font-size: 18px; width: 44px; height: 44px; cursor: pointer; box-shadow: 0 0 12px #ff6600, 0 0 24px #ff880088; transition: all 0.15s; }
+    .send-btn:hover { transform: scale(1.08); box-shadow: 0 0 20px #ff6600, 0 0 40px #ff8800cc; }
+    .users-list { padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 8px; background: rgba(0,0,0,0.3); }
+    .user-pill { font-size: 11.5px; background: rgba(0,255,157,0.12); border: 1px solid rgba(0,255,157,0.4); border-radius: 20px; padding: 4px 12px; color: white; box-shadow: 0 0 10px rgba(0,255,157,0.3); text-shadow: 0 0 4px currentColor; }
+    .user-pill.me { background: rgba(255,102,0,0.25); border-color: var(--neon-orange); box-shadow: 0 0 14px var(--neon-orange); }
+    @media (max-width: 768px) { .chat-panel { width: 100% !important; max-width: none; min-width: auto; } .resize-handle { display: none; } }
   </style>
 </head>
 <body>
 
 <div id="lobby">
   <div class="lobby-card">
-    <div class="logo">PeerBase</div>
+    <div class="logo">⬡ PeerRoom</div>
     <h1>Jump in.<br/>No signup needed.</h1>
-    <p>Instant video + chat room.</p>
-
+    <p>Instant video & text chat — now powered by LiveKit</p>
     <label for="name-input">Your name</label>
-    <input id="name-input" type="text" placeholder="e.g. Harley" maxlength="30" autocomplete="off" />
-
-    <label for="room-input">Room name</label>
-    <input id="room-input" type="text" placeholder="e.g. friends-hangout" maxlength="40" autocomplete="off" />
-
+    <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off" />
+    <label for="room-input">Room ID</label>
+    <input id="room-input" type="text" placeholder="e.g. my-team-standup" maxlength="40" autocomplete="off" />
     <button class="btn-join" onclick="joinRoom()">Enter Room →</button>
   </div>
 </div>
 
 <div id="app">
   <header class="app-header">
-    <div class="logo">PeerBase</div>
+    <div class="logo">⬡ PeerRoom</div>
     <div class="room-tag" id="room-display"></div>
-    <div style="flex:1"></div>
+    <div class="header-spacer"></div>
     <div class="user-count"><span class="dot"></span> <span id="user-count-label">1 person</span></div>
   </header>
-
   <div class="main-layout">
-    <div class="video-area">
+    <div class="video-area" id="video-area">
       <div id="video-grid"></div>
       <div class="controls">
-        <button class="ctrl-btn" id="btn-mic" onclick="toggleMic()">🎙️</button>
-        <button class="ctrl-btn" id="btn-cam" onclick="toggleCam()">📷</button>
-        <button class="ctrl-btn leave" onclick="leaveRoom()">📞</button>
+        <button class="ctrl-btn" id="btn-mic" title="Toggle mic" onclick="toggleMic()">🎙️</button>
+        <button class="ctrl-btn" id="btn-cam" title="Toggle camera" onclick="toggleCam()">📷</button>
+        <button class="ctrl-btn leave" title="Leave room" onclick="leaveRoom()">📞</button>
       </div>
     </div>
-
-    <div class="chat-panel">
-      <div class="chat-header">Chat</div>
+    <div class="chat-panel" id="chat-panel">
+      <div class="resize-handle" id="resize-handle"></div>
+      <div class="chat-header">
+        💬 Chat
+        <button onclick="openChatSettings()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:16px;">⚙️</button>
+      </div>
       <div id="chat-messages"></div>
+      <div id="users-area" style="border-top:1px solid var(--border); padding:10px 14px 0;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">In room</div>
+        <div class="users-list" id="users-list"></div>
+      </div>
       <div class="chat-input-area">
         <input id="chat-input" type="text" placeholder="Say something…" maxlength="500" onkeydown="if(event.key==='Enter') sendChat()" />
         <button class="send-btn" onclick="sendChat()">➤</button>
@@ -243,25 +153,90 @@
   </div>
 </div>
 
+<div id="settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);padding:24px;border-radius:16px;width:320px;max-width:90%;">
+    <h3 style="margin-bottom:16px;color:var(--accent);">Chat Settings</h3>
+    <label>Name color</label>
+    <input id="color-picker" type="color" style="width:100%;margin:8px 0;height:40px;" />
+    <label style="display:block;margin:12px 0 4px;">Font</label>
+    <select id="font-select" style="width:100%;padding:8px;background:var(--surface2);border:1px solid var(--border);color:white;border-radius:6px;">
+      <option value="'Syne',sans-serif">Syne (default)</option>
+      <option value="'DM Mono',monospace">DM Mono</option>
+    </select>
+    <label style="display:block;margin:12px 0 4px;">
+      <input id="bold-check" type="checkbox" /> Bold name
+    </label>
+    <label style="display:block;margin:8px 0;">
+      <input id="random-check" type="checkbox" checked /> Random color on next join
+    </label>
+    <div style="margin-top:20px;display:flex;gap:10px;">
+      <button onclick="saveSettings()" style="flex:1;background:var(--accent);color:#000;padding:10px;border:none;border-radius:8px;cursor:pointer;">Save</button>
+      <button onclick="closeSettings()" style="flex:1;background:var(--surface2);padding:10px;border:none;border-radius:8px;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 const LIVEKIT_URL = 'wss://peerbase-4ton8j78.livekit.cloud';
-
-// ──────────────────────────────────────────────
-//  REPLACE THESE TWO VALUES WITH YOUR REAL API KEY & SECRET
-//  (get them from LiveKit Cloud → API Keys)
-// ──────────────────────────────────────────────
-const API_KEY    = 'API67Qh46mCxz4k';
+const API_KEY = 'API67Qh46mCxz4k';
 const API_SECRET = 'Docxl2JTucHraF78fez7Dab3oPCBdJ36f7xXULQPiabA';
 
-// ──────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAUA3bn3AoK_y2dEY64ipEzS8YGM-dy8T8",
+  authDomain: "peerbase-chat.firebaseapp.com",
+  databaseURL: "https://peerbase-chat-default-rtdb.firebaseio.com",
+  projectId: "peerbase-chat",
+  storageBucket: "peerbase-chat.firebasestorage.app",
+  messagingSenderId: "342288819619",
+  appId: "1:342288819619:web:0d93db02fadd31c51ce616"
+};
 
-let room = null;
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.getDatabase(app);
+
+let myName = '';
+let myRoomId = '';
+let myUserId = '';
+let livekitRoom = null;
 let localVideoTrack = null;
 let localAudioTrack = null;
-let myIdentity = null;
+
+let userSettings = JSON.parse(localStorage.getItem('peerroom_chat_settings')) || {
+  nameColor: '#00ff9d',
+  font: "'Syne', sans-serif",
+  bold: false,
+  randomOnJoin: true
+};
+
+let userColors = {};
+
+let isResizing = false;
+const resizeHandle = document.getElementById('resize-handle');
+const chatPanel = document.getElementById('chat-panel');
+
+if (resizeHandle) {
+  resizeHandle.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    document.body.style.cursor = 'col-resize';
+    e.preventDefault();
+  });
+}
+
+document.addEventListener('mousemove', (e) => {
+  if (!isResizing) return;
+  const rect = document.querySelector('.main-layout').getBoundingClientRect();
+  let newWidth = rect.right - e.clientX;
+  newWidth = Math.max(220, Math.min(600, newWidth));
+  chatPanel.style.width = newWidth + 'px';
+});
+
+document.addEventListener('mouseup', () => {
+  isResizing = false;
+  document.body.style.cursor = 'default';
+});
 
 function generateToken(roomName, participantName) {
-  const at = new LiveKit.AccessToken(API_KEY, API_SECRET, {
+  const at = new LiveKitServer.AccessToken(API_KEY, API_SECRET, {
     identity: participantName
   });
 
@@ -269,7 +244,8 @@ function generateToken(roomName, participantName) {
     roomJoin: true,
     room: roomName,
     canPublish: true,
-    canSubscribe: true
+    canSubscribe: true,
+    canPublishData: true
   });
 
   return at.toJwt();
@@ -277,52 +253,64 @@ function generateToken(roomName, participantName) {
 
 window.joinRoom = async function() {
   const name = document.getElementById('name-input').value.trim();
-  const roomName = document.getElementById('room-input').value.trim() || 'test-room';
+  let roomId = document.getElementById('room-input').value.trim().replace(/\s+/g, '-').toLowerCase() || 'general';
+  if (!name) return alert('Enter your name');
 
-  if (!name) {
-    alert('Please enter your name');
-    return;
-  }
+  myName = name;
+  myRoomId = roomId;
+  myUserId = 'user_' + Date.now() + Math.random().toString(36).substring(2, 8);
 
-  myIdentity = name;
-  document.getElementById('room-display').textContent = roomName;
+  document.getElementById('room-display').textContent = '# ' + roomId;
   document.getElementById('lobby').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
+  document.getElementById('app').classList.add('visible');
 
-  // Generate token
-  const token = generateToken(roomName, name);
+  // Random color if enabled
+  let myColor = userSettings.randomOnJoin 
+    ? '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')
+    : userSettings.nameColor;
 
-  // Connect to room
-  room = new LiveKit.Room();
+  const userRef = firebase.ref(db, `rooms/${roomId}/users/${myUserId}`);
+  await firebase.set(userRef, { name: myName, joined: Date.now(), color: myColor });
+  firebase.onDisconnect(userRef).remove();
 
-  room.on(LiveKit.RoomEvent.ParticipantConnected, participant => {
-    addSystemMsg(`${participant.identity} joined the room`);
-    updateUserCount();
+  firebase.onValue(firebase.ref(db, `rooms/${roomId}/users`), snap => {
+    const users = snap.val() || {};
+    updateUserList(users);
   });
 
-  room.on(LiveKit.RoomEvent.ParticipantDisconnected, participant => {
-    addSystemMsg(`${participant.identity} left the room`);
-    updateUserCount();
+  firebase.onChildAdded(firebase.ref(db, `rooms/${roomId}/chat`), snap => {
+    const msg = snap.val();
+    addChatMsg(msg.name, msg.text, msg.time, msg.userId === myUserId, msg.color || '#ffffff');
   });
 
-  room.on(LiveKit.RoomEvent.TrackSubscribed, (track, pub, participant) => {
+  // LiveKit connection
+  livekitRoom = new LiveKit.Room();
+
+  livekitRoom.on(LiveKit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
     if (track.kind === 'video') {
-      addRemoteVideo(track, participant);
+      addRemoteVideo(track, participant.identity);
     }
   });
 
-  try {
-    await room.connect(LIVEKIT_URL, token);
-    console.log('Connected to room:', room.name);
+  livekitRoom.on(LiveKit.RoomEvent.ParticipantConnected, participant => {
+    addSystemMsg(`${participant.identity} joined the room`);
+  });
 
-    // Publish local camera + mic
+  livekitRoom.on(LiveKit.RoomEvent.ParticipantDisconnected, participant => {
+    addSystemMsg(`${participant.identity} left the room`);
+  });
+
+  try {
+    const token = generateToken(roomId, myName);
+    await livekitRoom.connect(LIVEKIT_URL, token);
+
     const tracks = await LiveKit.createLocalTracks({
-      video: { facingMode: 'user' },
+      video: true,
       audio: true
     });
 
     tracks.forEach(track => {
-      room.localParticipant.publishTrack(track);
+      livekitRoom.localParticipant.publishTrack(track);
       if (track.kind === 'video') {
         localVideoTrack = track;
         addLocalVideo(track);
@@ -332,93 +320,139 @@ window.joinRoom = async function() {
     });
 
   } catch (err) {
-    console.error('Failed to connect:', err);
-    alert('Could not connect to room: ' + err.message);
+    console.error('LiveKit error:', err);
+    addSystemMsg('Failed to connect to video room: ' + err.message);
   }
 };
 
 function addLocalVideo(track) {
   const el = track.attach();
   el.muted = true;
-  const tile = createVideoTile(el, myIdentity + ' (you)', true);
-  document.getElementById('video-grid').appendChild(tile);
-}
-
-function addRemoteVideo(track, participant) {
-  const el = track.attach();
-  const tile = createVideoTile(el, participant.identity);
-  document.getElementById('video-grid').appendChild(tile);
-
-  // Clean up when track unsubscribed
-  track.on('unsubscribed', () => {
-    tile.remove();
-  });
-}
-
-function createVideoTile(videoEl, labelText, isLocal = false) {
   const tile = document.createElement('div');
-  tile.className = 'video-tile' + (isLocal ? ' local' : '');
-  tile.appendChild(videoEl);
-
+  tile.className = 'video-tile local';
+  tile.appendChild(el);
   const label = document.createElement('div');
   label.className = 'tile-label';
-  label.textContent = labelText;
+  label.textContent = myName + ' (you)';
   tile.appendChild(label);
-
-  return tile;
+  document.getElementById('video-grid').appendChild(tile);
 }
 
-function updateUserCount() {
-  const count = room.remoteParticipants.size + 1; // + local
-  document.getElementById('user-count-label').textContent = count + (count === 1 ? ' person' : ' people');
-}
-
-function addSystemMsg(text) {
-  const msg = document.createElement('div');
-  msg.className = 'system-msg';
-  msg.textContent = text;
-  document.getElementById('chat-messages').appendChild(msg);
-  msg.scrollIntoView({ behavior: 'smooth' });
+function addRemoteVideo(track, identity) {
+  const el = track.attach();
+  const tile = document.createElement('div');
+  tile.className = 'video-tile';
+  tile.appendChild(el);
+  const label = document.createElement('div');
+  label.className = 'tile-label';
+  label.textContent = identity;
+  tile.appendChild(label);
+  document.getElementById('video-grid').appendChild(tile);
 }
 
 window.toggleMic = function() {
-  if (localAudioTrack) {
-    localAudioTrack.setEnabled(!localAudioTrack.isEnabled);
-  }
+  if (localAudioTrack) localAudioTrack.setEnabled(!localAudioTrack.isEnabled);
 };
 
 window.toggleCam = function() {
-  if (localVideoTrack) {
-    localVideoTrack.setEnabled(!localVideoTrack.isEnabled);
-  }
+  if (localVideoTrack) localVideoTrack.setEnabled(!localVideoTrack.isEnabled);
 };
 
 window.leaveRoom = function() {
-  if (room) {
-    room.disconnect();
-    room = null;
-  }
+  if (livekitRoom) livekitRoom.disconnect();
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
   location.reload();
 };
 
-// Basic chat (you can replace with Firebase or LiveKit data channels later)
 window.sendChat = function() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if (!text) return;
 
-  const msg = document.createElement('div');
-  msg.className = 'msg self';
-  msg.innerHTML = `<div class="msg-text">${escapeHtml(text)}</div>`;
-  document.getElementById('chat-messages').appendChild(msg);
-  msg.scrollIntoView({ behavior: 'smooth' });
+  firebase.push(firebase.ref(db, `rooms/${myRoomId}/chat`), {
+    userId: myUserId,
+    name: myName,
+    text,
+    time: Date.now(),
+    color: userSettings.nameColor
+  });
 
   input.value = '';
 };
 
-function escapeHtml(str) {
-  return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'})[m]);
+function updateUserList(usersData) {
+  const list = document.getElementById('users-list');
+  list.innerHTML = '';
+  let count = 0;
+  for (const uid in usersData) {
+    const u = usersData[uid];
+    userColors[u.name] = u.color || '#ffffff';
+    const pill = document.createElement('div');
+    pill.className = 'user-pill' + (u.name === myName ? ' me' : '');
+    pill.style.color = u.color || '#ffffff';
+    pill.textContent = u.name;
+    list.appendChild(pill);
+    count++;
+  }
+  document.getElementById('user-count-label').textContent = count + (count === 1 ? ' person' : ' people');
 }
+
+function addChatMsg(name, text, timestamp, isSelf, color = '#ffffff') {
+  const container = document.getElementById('chat-messages');
+  const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const div = document.createElement('div');
+  div.className = `msg${isSelf ? ' self' : ''}`;
+  div.innerHTML = `
+    <div class="msg-meta">
+      <span class="msg-name" style="color:${color}">${escapeHtml(name)}</span>
+      <span class="msg-time">${time}</span>
+    </div>
+    <div class="msg-text">${escapeHtml(text)}</div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function addSystemMsg(text) {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'system-msg';
+  div.textContent = text;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+window.openChatSettings = function() {
+  document.getElementById('color-picker').value = userSettings.nameColor;
+  document.getElementById('font-select').value = userSettings.font;
+  document.getElementById('bold-check').checked = userSettings.bold;
+  document.getElementById('random-check').checked = userSettings.randomOnJoin;
+  document.getElementById('settings-modal').style.display = 'flex';
+};
+
+window.saveSettings = function() {
+  userSettings.nameColor = document.getElementById('color-picker').value;
+  userSettings.font = document.getElementById('font-select').value;
+  userSettings.bold = document.getElementById('bold-check').checked;
+  userSettings.randomOnJoin = document.getElementById('random-check').checked;
+  localStorage.setItem('peerroom_chat_settings', JSON.stringify(userSettings));
+  closeSettings();
+  addSystemMsg('Settings saved! New color will apply on next join if random is enabled.');
+};
+
+window.closeSettings = function() {
+  document.getElementById('settings-modal').style.display = 'none';
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+  const hash = location.hash.replace('#', '').trim();
+  if (hash) document.getElementById('room-input').value = hash;
+  document.getElementById('name-input').focus();
+});
 </script>
 </body>
 </html>
