@@ -6,9 +6,10 @@
   <title>PeerRoom — Instant Video Chat</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <!-- PeerJS CDN (latest stable 1.5.5 as of 2026) -->
+  <!-- PeerJS CDN - confirmed 1.5.5 stable -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js"></script>
   <style>
+    /* Your full styles here - unchanged from last version */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg: #0b0d11;
@@ -209,40 +210,41 @@
   </div>
 </div>
 
-<audio id="bloop-sound" preload="auto">
-  <source src="https://assets.codepen.io/605876/bloop.mp3" type="audio/mpeg">
-</audio>
-
 <script>
 let myName = '';
 let myRoomId = '';
 let peer = null;
 let myPeerId = '';
 let localStream = null;
-let connections = {}; // For future data channels
-let calls = {}; // Active media calls
-let audioUnlocked = false;
-const bloop = document.getElementById('bloop-sound');
+let calls = {};
 
-const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' }
-  // Add TURN if needed later: e.g. { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' }
-];
-
-document.addEventListener('click', () => {
-  if (!audioUnlocked && document.getElementById('app').classList.contains('visible')) {
-    bloop.play().then(() => { audioUnlocked = true; }).catch(() => {});
-  }
-}, { once: true });
+document.addEventListener('DOMContentLoaded', () => {
+  const hash = location.hash.replace('#', '').trim();
+  if (hash) document.getElementById('room-input').value = hash;
+  document.getElementById('name-input').focus();
+});
 
 window.joinRoom = async function() {
   const name = document.getElementById('name-input').value.trim();
   let roomId = document.getElementById('room-input').value.trim().replace(/\s+/g, '-').toLowerCase() || 'general';
-  if (!name) { alert('Please enter your name.'); return; }
+  if (!name) {
+    alert('Please enter your name.');
+    return;
+  }
 
   myName = name;
   myRoomId = roomId;
+
+  addSystemMsg('Joining room... Requesting camera & mic access...');
+
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    addSystemMsg('Camera & mic ready!');
+    addVideoTile('local', myName, localStream, true);
+  } catch (e) {
+    console.error('Media error:', e);
+    addSystemMsg('Failed to access camera/mic: ' + e.message + '. Video may not work.');
+  }
 
   document.getElementById('room-display').textContent = '# ' + roomId;
   document.getElementById('lobby').style.display = 'none';
@@ -250,64 +252,75 @@ window.joinRoom = async function() {
 
   addSystemMsg(`You joined #${roomId} as ${name}`);
 
-  // Initialize PeerJS
-  peer = new Peer(); // Uses free cloud server by default
+  // Initialize PeerJS with explicit config for better reliability
+  addSystemMsg('Connecting to Peer server...');
+  peer = new Peer({
+    host: '0.peerjs.com',
+    port: 443,
+    path: '/',
+    secure: true,
+    debug: 2 // Show logs in console for debugging
+  });
 
   peer.on('open', (id) => {
     myPeerId = id;
     document.getElementById('my-peer-id').textContent = id;
-    addSystemMsg(`Your Peer ID: ${id} (share this to connect)`);
+    addSystemMsg(`Connected! Your Peer ID: ${id} (share this to let others call you)`);
   });
 
   peer.on('error', (err) => {
     console.error('PeerJS error:', err);
-    addSystemMsg('Connection error: ' + err.type);
+    addSystemMsg('Peer connection error: ' + err.type + ' - ' + err.message);
   });
 
-  // Handle incoming calls
+  // Incoming call handler
   peer.on('call', (call) => {
-    if (!localStream) return;
-    call.answer(localStream);
-    handleCall(call);
+    if (localStream) {
+      call.answer(localStream);
+      handleCall(call);
+    } else {
+      addSystemMsg('Incoming call but no local stream available.');
+    }
   });
 
-  // Get local media
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    addVideoTile('local', myName, localStream, true);
-  } catch (e) {
-    console.error('Media error:', e);
-    addSystemMsg('Camera/mic access denied or unavailable.');
-  }
+  // Timeout if no ID after 10s
+  setTimeout(() => {
+    if (!myPeerId) {
+      addSystemMsg('Peer connection taking too long or failed. Check console (F12) for errors. Try refreshing.');
+    }
+  }, 10000);
 };
 
 function callPeer() {
   const remoteId = document.getElementById('remote-peer-id').value.trim();
-  if (!remoteId || !peer || !localStream) {
-    addSystemMsg('Enter a valid peer ID and allow camera/mic first.');
+  if (!remoteId) {
+    addSystemMsg('Enter a peer ID first.');
     return;
   }
+  if (!localStream) {
+    addSystemMsg('No local camera stream - allow access first.');
+    return;
+  }
+  addSystemMsg(`Calling peer ${remoteId}...`);
   const call = peer.call(remoteId, localStream);
   handleCall(call);
 }
 
 function handleCall(call) {
   calls[call.peer] = call;
-
   call.on('stream', (remoteStream) => {
-    if (!document.getElementById('tile-' + call.peer)) {
-      addVideoTile(call.peer, call.peer.substring(0,8) + '...', remoteStream, false);
-    }
+    addSystemMsg(`Connected to ${call.peer}!`);
+    addVideoTile(call.peer, call.peer.substring(0,8) + '...', remoteStream, false);
   });
-
   call.on('close', () => {
+    addSystemMsg(`Call with ${call.peer} ended.`);
     const tile = document.getElementById('tile-' + call.peer);
     if (tile) tile.remove();
     delete calls[call.peer];
   });
-
   call.on('error', (err) => {
     console.error('Call error:', err);
+    addSystemMsg('Call error with ' + call.peer);
   });
 }
 
@@ -336,29 +349,33 @@ function addVideoTile(id, name, stream, isLocal) {
 
 window.toggleMic = function() {
   if (!localStream) return;
-  const audioTracks = localStream.getAudioTracks();
-  const enabled = audioTracks[0]?.enabled = !audioTracks[0]?.enabled;
-  document.getElementById('btn-mic').textContent = enabled ? '🎙️' : '🔇';
-  document.getElementById('btn-mic').classList.toggle('off', !enabled);
+  const track = localStream.getAudioTracks()[0];
+  if (track) {
+    track.enabled = !track.enabled;
+    const btn = document.getElementById('btn-mic');
+    btn.textContent = track.enabled ? '🎙️' : '🔇';
+    btn.classList.toggle('off', !track.enabled);
+  }
 };
 
 window.toggleCam = function() {
   if (!localStream) return;
-  const videoTracks = localStream.getVideoTracks();
-  const enabled = videoTracks[0]?.enabled = !videoTracks[0]?.enabled;
-  document.getElementById('btn-cam').textContent = enabled ? '📷' : '🚫';
-  document.getElementById('btn-cam').classList.toggle('off', !enabled);
+  const track = localStream.getVideoTracks()[0];
+  if (track) {
+    track.enabled = !track.enabled;
+    const btn = document.getElementById('btn-cam');
+    btn.textContent = track.enabled ? '📷' : '🚫';
+    btn.classList.toggle('off', !track.enabled);
+  }
 };
 
 window.leaveRoom = function() {
-  if (localStream) {
-    localStream.getTracks().forEach(t => t.stop());
-  }
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
   if (peer) peer.destroy();
   location.reload();
 };
 
-// Chat (still local)
+// Local chat functions (unchanged)
 window.sendChat = function() {
   const input = document.getElementById('chat-input');
   const message = input.value.trim();
@@ -381,11 +398,6 @@ function addChatMsg(name, text, timestamp, isSelf) {
   `;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
-
-  if (audioUnlocked && !document.hidden) {
-    bloop.currentTime = 0;
-    bloop.play().catch(() => {});
-  }
 }
 
 function addSystemMsg(text) {
@@ -400,12 +412,6 @@ function addSystemMsg(text) {
 function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
-
-window.addEventListener('DOMContentLoaded', () => {
-  const hash = location.hash.replace('#', '').trim();
-  if (hash) document.getElementById('room-input').value = hash;
-  document.getElementById('name-input').focus();
-});
 </script>
 </body>
 </html>
