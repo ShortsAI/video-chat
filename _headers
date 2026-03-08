@@ -1,5 +1,0 @@
-# Allow LiveKit, Firebase and Google Fonts/CDNs
-/*
-  Cross-Origin-Resource-Policy: cross-origin
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com 'unsafe-inline'; connect-src 'self' wss://*.livekit.cloud https://*.firebaseio.com https://*.googleapis.com; media-src * blob:; img-src * data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com;
-*/
