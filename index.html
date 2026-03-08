@@ -163,7 +163,7 @@
   <div class="lobby-card">
     <div class="logo">⬡ PeerRoom</div>
     <h1>Jump in.<br/>No signup needed.</h1>
-    <p>Instant video &amp; text chat. Allow camera/mic when prompted. Share exact Peer ID to connect.</p>
+    <p>Instant video &amp; text chat. Allow camera/mic. Use two browsers/tabs. Copy full Peer ID from one, paste into other's call box.</p>
     <label for="name-input">Your name</label>
     <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off" />
     <label for="room-input">Room ID</label>
@@ -179,7 +179,7 @@
     <span class="peer-id-display">My Peer ID: <span id="my-peer-id">connecting...</span></span>
     <div class="header-spacer"></div>
     <div class="call-input-area">
-      <input id="remote-peer-id" class="call-input" placeholder="Paste peer ID to call" />
+      <input id="remote-peer-id" class="call-input" placeholder="Paste exact peer ID here" />
       <button class="call-btn" onclick="callPeer()">Call</button>
     </div>
     <div class="user-count"><span class="dot"></span> <span id="user-count-label">1 person</span></div>
@@ -190,6 +190,7 @@
       <div class="controls">
         <button class="ctrl-btn" id="btn-mic" title="Toggle mic" onclick="toggleMic()">🎙️</button>
         <button class="ctrl-btn" id="btn-cam" title="Toggle camera" onclick="toggleCam()">📷</button>
+        <button class="ctrl-btn" onclick="refreshICE()" title="Refresh connection (if stuck)">🔄</button>
         <button class="ctrl-btn leave" title="Leave room" onclick="leaveRoom()">📞</button>
       </div>
     </div>
@@ -221,7 +222,9 @@ const ICE_SERVERS = [
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
   { urls: 'stun:stun3.l.google.com:19302' },
-  { urls: 'stun:stun4.l.google.com:19302' }
+  { urls: 'stun:stun4.l.google.com:19302' },
+  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -241,72 +244,66 @@ window.joinRoom = async function() {
   myName = name;
   myRoomId = roomId;
 
-  addSystemMsg('Joining... Requesting camera & mic (allow in popup)...');
+  addSystemMsg('Joining... Allow camera & mic in browser popup.');
 
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    addSystemMsg('Camera & mic ready!');
+    addSystemMsg('Media ready!');
     addVideoTile('local', myName, localStream, true);
   } catch (e) {
     console.error('Media error:', e);
-    addSystemMsg('Camera/mic access failed: ' + e.message + '. Check permissions and reload.');
+    addSystemMsg('Media failed: ' + e.message + '. Reload & allow permissions.');
   }
 
   document.getElementById('room-display').textContent = '# ' + roomId;
   document.getElementById('lobby').style.display = 'none';
   document.getElementById('app').classList.add('visible');
 
-  addSystemMsg(`Joined #${roomId} as ${name}`);
-  updateUserList(); // Show self in list
+  addSystemMsg(`Joined as ${name}`);
+  updateUserList();
 
-  addSystemMsg('Connecting to PeerJS signaling server... (may take 5-15s)');
+  addSystemMsg('Connecting to signaling server...');
+
   peer = new Peer({
     host: '0.peerjs.com',
     port: 443,
     path: '/',
     secure: true,
     config: { iceServers: ICE_SERVERS },
-    debug: 3  // Verbose logging for troubleshooting
+    debug: 3
   });
 
   peer.on('open', (id) => {
     myPeerId = id;
     document.getElementById('my-peer-id').textContent = id;
-    addSystemMsg(`Connected! Your Peer ID: ${id} — copy & share exact ID with others to connect.`);
+    addSystemMsg(`Your Peer ID: ${id} — share exact ID!`);
   });
 
   peer.on('error', (err) => {
-    console.error('PeerJS error:', err);
-    addSystemMsg(`Peer error: ${err.type} - ${err.message || 'Unknown'}. Try refresh or different network.`);
+    console.error('Peer error:', err);
+    addSystemMsg(`Error: ${err.type} - ${err.message}. Try refresh/different network.`);
   });
 
   peer.on('call', (call) => {
+    addSystemMsg(`Incoming call from ${call.peer}`);
     if (localStream) {
       call.answer(localStream);
       handleCall(call);
     } else {
-      addSystemMsg('Incoming call, but no local stream.');
+      addSystemMsg('No media for incoming call.');
     }
   });
 
   setTimeout(() => {
-    if (!myPeerId) {
-      addSystemMsg('Peer connection slow/failed. Check console (F12) → Network tab for websocket to peerjs.com. Try different browser/network.');
-    }
+    if (!myPeerId) addSystemMsg('Signaling slow/failed. Check console → Network for peerjs websocket.');
   }, 15000);
 };
 
 function callPeer() {
   const remoteId = document.getElementById('remote-peer-id').value.trim();
-  if (!remoteId) {
-    addSystemMsg('Paste a valid peer ID first.');
-    return;
-  }
-  if (!localStream) {
-    addSystemMsg('No local camera — allow access and try again.');
-    return;
-  }
-  addSystemMsg(`Attempting call to ${remoteId}...`);
+  if (!remoteId) return addSystemMsg('Enter peer ID.');
+  if (!localStream) return addSystemMsg('No media — allow camera.');
+  addSystemMsg(`Calling ${remoteId}...`);
   const call = peer.call(remoteId, localStream);
   handleCall(call);
 }
@@ -314,18 +311,17 @@ function callPeer() {
 function handleCall(call) {
   calls[call.peer] = call;
   call.on('stream', (remoteStream) => {
-    addSystemMsg(`Connected to ${call.peer}! Video should appear.`);
+    addSystemMsg(`Connected to ${call.peer}!`);
     addVideoTile(call.peer, call.peer.substring(0,8) + '...', remoteStream, false);
   });
   call.on('close', () => {
-    addSystemMsg(`Call with ${call.peer} closed.`);
-    const tile = document.getElementById('tile-' + call.peer);
-    if (tile) tile.remove();
+    addSystemMsg(`Call ended with ${call.peer}.`);
+    document.getElementById('tile-' + call.peer)?.remove();
     delete calls[call.peer];
   });
   call.on('error', (err) => {
     console.error('Call error:', err);
-    addSystemMsg(`Call failed for ${call.peer}: ${err.message || 'Unknown'}`);
+    addSystemMsg(`Call error: ${err.message || err}`);
   });
 }
 
@@ -353,30 +349,33 @@ function addVideoTile(id, name, stream, isLocal) {
 }
 
 window.toggleMic = function() {
-  if (!localStream) return;
-  const track = localStream.getAudioTracks()[0];
+  const track = localStream?.getAudioTracks()[0];
   if (track) {
     track.enabled = !track.enabled;
-    const btn = document.getElementById('btn-mic');
-    btn.textContent = track.enabled ? '🎙️' : '🔇';
-    btn.classList.toggle('off', !track.enabled);
+    document.getElementById('btn-mic').textContent = track.enabled ? '🎙️' : '🔇';
+    document.getElementById('btn-mic').classList.toggle('off', !track.enabled);
   }
 };
 
 window.toggleCam = function() {
-  if (!localStream) return;
-  const track = localStream.getVideoTracks()[0];
+  const track = localStream?.getVideoTracks()[0];
   if (track) {
     track.enabled = !track.enabled;
-    const btn = document.getElementById('btn-cam');
-    btn.textContent = track.enabled ? '📷' : '🚫';
-    btn.classList.toggle('off', !track.enabled);
+    document.getElementById('btn-cam').textContent = track.enabled ? '📷' : '🚫';
+    document.getElementById('btn-cam').classList.toggle('off', !track.enabled);
   }
 };
 
+window.refreshICE = function() {
+  addSystemMsg('Refreshing ICE candidates...');
+  Object.values(calls).forEach(call => {
+    call.peerConnection?.restartIce?.();
+  });
+};
+
 window.leaveRoom = function() {
-  if (localStream) localStream.getTracks().forEach(t => t.stop());
-  if (peer) peer.destroy();
+  localStream?.getTracks().forEach(t => t.stop());
+  peer?.destroy();
   location.reload();
 };
 
