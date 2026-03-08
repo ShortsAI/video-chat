@@ -7,10 +7,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-  <!-- Firebase module: imports and exposes to window._fb + fires 'firebase-ready' -->
+  <!-- Firebase module: init + expose to window._fb -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, set, onValue, push, onDisconnect, remove, onChildAdded }
+    import { getDatabase, ref, set, onValue, push, onDisconnect, remove, onChildAdded, increment, serverTimestamp }
       from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     const fbApp = initializeApp({
       apiKey: "AIzaSyAUA3bn3AoK_y2dEY64ipEzS8YGM-dy8T8",
@@ -21,7 +21,7 @@
       messagingSenderId: "342288819619",
       appId: "1:342288819619:web:0d93db02fadd31c51ce616"
     });
-    window._fb = { db: getDatabase(fbApp), ref, set, onValue, push, onDisconnect, remove, onChildAdded };
+    window._fb = { db: getDatabase(fbApp), ref, set, onValue, push, onDisconnect, remove, onChildAdded, increment, serverTimestamp };
     window.dispatchEvent(new Event('firebase-ready'));
   </script>
 
@@ -41,7 +41,7 @@
     /* ── LOBBY ── */
     #lobby {
       position:fixed; inset:0; display:flex; flex-direction:column; align-items:center;
-      background:var(--bg); z-index:100; overflow-y:auto; padding:40px 20px 60px;
+      background:var(--bg); z-index:100; overflow-y:auto; padding:36px 20px 60px;
       animation:fadeIn .5s ease;
     }
     @keyframes fadeIn { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:none;} }
@@ -53,92 +53,160 @@
     .blob-3 { width:300px;height:300px;top:40%;left:50%;background:#9933ff;animation-delay:-8s; }
     @keyframes blobDrift { from{transform:translate(0,0) scale(1);} to{transform:translate(30px,20px) scale(1.08);} }
 
-    .lobby-inner { position:relative; z-index:1; width:100%; max-width:980px; }
+    .lobby-inner { position:relative; z-index:1; width:100%; max-width:1000px; }
 
-    .lobby-hero { text-align:center; margin-bottom:40px; }
+    /* Hero */
+    .lobby-hero { text-align:center; margin-bottom:32px; }
     .lobby-logo {
       display:inline-flex; align-items:center; gap:12px; font-size:13px; font-weight:700;
-      letter-spacing:.22em; text-transform:uppercase; color:var(--accent); margin-bottom:20px;
+      letter-spacing:.22em; text-transform:uppercase; color:var(--accent); margin-bottom:18px;
       text-shadow:0 0 12px var(--accent),0 0 28px var(--accent);
     }
     .logo-hex { font-size:24px; filter:drop-shadow(0 0 8px var(--accent)); }
     .lobby-hero h1 {
-      font-size:clamp(34px,5vw,56px); font-weight:800; line-height:1.1; margin-bottom:12px;
+      font-size:clamp(30px,4.5vw,52px); font-weight:800; line-height:1.1; margin-bottom:10px;
       background:linear-gradient(135deg,#e8eaf0 30%,var(--accent) 100%);
       -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
     }
-    .lobby-hero p { color:var(--muted); font-size:15px; }
+    .lobby-hero p { color:var(--muted); font-size:14px; }
 
-    .name-bar {
-      display:flex; align-items:center; gap:10px; background:var(--surface);
-      border:1px solid var(--border); border-radius:16px; padding:10px 16px;
-      max-width:420px; margin:0 auto 40px; transition:box-shadow .2s;
+    /* Total online badge — top right of hero */
+    .total-online-badge {
+      position:fixed; top:18px; right:22px; z-index:200;
+      display:flex; align-items:center; gap:7px;
+      background:rgba(11,13,17,.85); backdrop-filter:blur(8px);
+      border:1px solid rgba(0,255,200,.35); border-radius:30px;
+      padding:6px 14px 6px 10px;
+      font-family:'DM Mono',monospace; font-size:13px; font-weight:500;
+      color:#00ffcc;
+      box-shadow:0 0 14px rgba(0,255,200,.3), inset 0 0 10px rgba(0,255,200,.06);
     }
-    .name-bar:focus-within { box-shadow:0 0 0 2px var(--accent),0 0 20px rgba(0,229,160,.2); }
-    .name-bar label { font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);white-space:nowrap; }
-    .name-bar input { flex:1;background:none;border:none;color:var(--text);font-family:'DM Mono',monospace;font-size:15px;outline:none; }
-    .name-bar input::placeholder { color:var(--muted); }
+    .total-online-dot {
+      width:8px; height:8px; border-radius:50%; background:#00ffcc;
+      box-shadow:0 0 6px #00ffcc, 0 0 12px #00ffcc;
+      animation:dotPulse 2s ease-in-out infinite;
+    }
+    @keyframes dotPulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.5;transform:scale(.75);} }
 
-    .section-label { text-align:center;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:20px; }
+    /* Name + Custom row */
+    .entry-row {
+      display:flex; align-items:stretch; gap:12px;
+      max-width:100%; margin:0 auto 32px;
+    }
+    .entry-field {
+      display:flex; align-items:center; gap:10px; flex:1;
+      background:var(--surface); border:1px solid var(--border); border-radius:16px;
+      padding:10px 16px; transition:box-shadow .2s; min-width:0;
+    }
+    .entry-field:focus-within { box-shadow:0 0 0 2px var(--accent),0 0 20px rgba(0,229,160,.2); }
+    .entry-field.custom:focus-within { box-shadow:0 0 0 2px var(--accent2),0 0 20px rgba(0,153,255,.2); }
+    .entry-field label { font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap; }
+    .entry-field label.lbl-name { color:var(--accent); }
+    .entry-field label.lbl-room { color:var(--accent2); }
+    .entry-field input { flex:1;background:none;border:none;color:var(--text);font-family:'DM Mono',monospace;font-size:14px;outline:none;min-width:0; }
+    .entry-field input::placeholder { color:var(--muted); }
+    .entry-join-btn {
+      background:var(--accent2); color:#fff; border:none; border-radius:12px;
+      font-family:'Syne',sans-serif; font-weight:700; font-size:13px;
+      padding:0 20px; cursor:pointer; letter-spacing:.04em; white-space:nowrap;
+      transition:opacity .15s,transform .15s; flex-shrink:0;
+    }
+    .entry-join-btn:hover { opacity:.85; transform:translateY(-1px); }
+    @media(max-width:600px) {
+      .entry-row { flex-direction:column; }
+      .entry-join-btn { padding:12px; border-radius:12px; }
+    }
 
-    .room-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:28px; }
+    /* Section label */
+    .section-label { text-align:center;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:18px; }
+
+    /* Room grid */
+    .room-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:16px; }
     @media(max-width:680px) { .room-grid { grid-template-columns:repeat(2,1fr); } }
     @media(max-width:440px) { .room-grid { grid-template-columns:1fr; } }
 
     .room-card {
       --c:#00e5a0;
-      position:relative; border-radius:18px; padding:26px 20px 20px; cursor:pointer;
+      position:relative; border-radius:18px; padding:22px 18px 16px; cursor:pointer;
       overflow:hidden; background:var(--surface); border:1px solid rgba(255,255,255,.07);
       transition:transform .2s ease,box-shadow .2s ease; animation:cardIn .5s ease both;
+      display:flex; flex-direction:column;
     }
     @keyframes cardIn { from{opacity:0;transform:translateY(16px) scale(.97);} to{opacity:1;transform:none;} }
-    .room-card:nth-child(1){animation-delay:.05s} .room-card:nth-child(2){animation-delay:.10s}
-    .room-card:nth-child(3){animation-delay:.15s} .room-card:nth-child(4){animation-delay:.20s}
-    .room-card:nth-child(5){animation-delay:.25s} .room-card:nth-child(6){animation-delay:.30s}
-    .room-card:nth-child(7){animation-delay:.35s} .room-card:nth-child(8){animation-delay:.40s}
-    .room-card:nth-child(9){animation-delay:.45s}
+    .room-card:nth-child(1){animation-delay:.04s} .room-card:nth-child(2){animation-delay:.08s}
+    .room-card:nth-child(3){animation-delay:.12s} .room-card:nth-child(4){animation-delay:.16s}
+    .room-card:nth-child(5){animation-delay:.20s} .room-card:nth-child(6){animation-delay:.24s}
+    .room-card:nth-child(7){animation-delay:.28s} .room-card:nth-child(8){animation-delay:.32s}
+    .room-card:nth-child(9){animation-delay:.36s} .room-card:nth-child(10){animation-delay:.40s}
 
     .room-card::before {
       content:''; position:absolute; inset:0; border-radius:18px; pointer-events:none;
-      background:radial-gradient(circle at 30% 30%, color-mix(in srgb,var(--c) 18%,transparent), transparent 65%);
+      background:radial-gradient(circle at 30% 30%, color-mix(in srgb,var(--c) 16%,transparent), transparent 65%);
     }
     .room-card::after {
       content:''; position:absolute; inset:0; border-radius:18px; pointer-events:none;
-      border:1.5px solid var(--c); opacity:.3; transition:opacity .25s;
+      border:1.5px solid var(--c); opacity:.28; transition:opacity .25s;
     }
-    .room-card:hover { transform:translateY(-5px) scale(1.02); box-shadow:0 8px 40px color-mix(in srgb,var(--c) 30%,transparent); }
-    .room-card:hover::after { opacity:.9; }
+    .room-card:hover { transform:translateY(-4px) scale(1.02); box-shadow:0 8px 36px color-mix(in srgb,var(--c) 28%,transparent); }
+    .room-card:hover::after { opacity:.85; }
     .room-card:active { transform:scale(.98); }
 
-    .room-emoji { font-size:34px;margin-bottom:10px;display:block;filter:drop-shadow(0 0 6px var(--c));transition:filter .2s; }
-    .room-card:hover .room-emoji { filter:drop-shadow(0 0 14px var(--c)); }
-    .room-name { font-size:18px;font-weight:800;color:var(--text);margin-bottom:5px;transition:color .2s; }
+    .room-emoji { font-size:30px;margin-bottom:8px;display:block;filter:drop-shadow(0 0 5px var(--c));transition:filter .2s; }
+    .room-card:hover .room-emoji { filter:drop-shadow(0 0 12px var(--c)); }
+    .room-name { font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px;transition:color .2s; }
     .room-card:hover .room-name { color:var(--c); }
-    .room-desc { font-size:12px;color:var(--muted);line-height:1.5; }
+    .room-desc { font-size:11.5px;color:var(--muted);line-height:1.45;flex:1; }
+
     .room-tag-badge {
-      position:absolute;top:13px;right:13px;
-      font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.07em;
+      position:absolute;top:12px;right:12px;
+      font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.07em;
       background:color-mix(in srgb,var(--c) 14%,transparent);
-      color:var(--c);border:1px solid color-mix(in srgb,var(--c) 38%,transparent);
-      border-radius:6px;padding:3px 8px;
+      color:var(--c);border:1px solid color-mix(in srgb,var(--c) 35%,transparent);
+      border-radius:6px;padding:2px 7px;
     }
 
-    .custom-room-strip {
-      display:flex;align-items:center;gap:10px;background:var(--surface);
-      border:1px solid var(--border);border-radius:14px;padding:12px 16px;
-      max-width:980px;margin:0 auto;transition:box-shadow .2s;
+    /* Live stats bar on each card */
+    .room-stats {
+      display:flex; align-items:center; gap:10px;
+      margin-top:10px; padding-top:9px;
+      border-top:1px solid rgba(255,255,255,.07);
     }
-    .custom-room-strip:focus-within { box-shadow:0 0 0 2px rgba(0,153,255,.5),0 0 20px rgba(0,153,255,.15); }
-    .strip-label { font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent2);white-space:nowrap; }
-    .strip-input { flex:1;background:none;border:none;color:var(--text);font-family:'DM Mono',monospace;font-size:14px;outline:none; }
-    .strip-input::placeholder { color:var(--muted); }
-    .strip-btn {
-      background:var(--accent2);color:#fff;border:none;border-radius:8px;
-      font-family:'Syne',sans-serif;font-weight:700;font-size:13px;
-      padding:8px 18px;cursor:pointer;letter-spacing:.04em;white-space:nowrap;
-      transition:opacity .15s,transform .15s;
+    .stat-item {
+      display:flex; align-items:center; gap:4px;
+      font-family:'DM Mono',monospace; font-size:11px; color:rgba(255,255,255,.45);
+      transition:color .2s;
     }
-    .strip-btn:hover { opacity:.85;transform:translateY(-1px); }
+    .room-card:hover .stat-item { color:rgba(255,255,255,.7); }
+    .stat-item svg { width:12px;height:12px;flex-shrink:0;opacity:.7; }
+    .stat-num { font-size:11px; }
+
+    /* Online dot on card */
+    .card-live-dot {
+      width:6px;height:6px;border-radius:50%;background:var(--c);
+      box-shadow:0 0 5px var(--c);margin-left:auto;flex-shrink:0;
+      opacity:0; transition:opacity .3s;
+    }
+    .card-live-dot.active { opacity:1; animation:dotPulse 2s ease-in-out infinite; }
+
+    /* Test room strip at bottom */
+    .test-room-strip {
+      display:flex; align-items:center; gap:14px;
+      background:var(--surface); border:1px solid rgba(255,255,255,.1);
+      border-radius:14px; padding:14px 18px; max-width:1000px; margin:0 auto;
+      transition:box-shadow .2s; cursor:pointer;
+    }
+    .test-room-strip:hover { box-shadow:0 0 0 1.5px rgba(255,255,255,.2), 0 4px 20px rgba(0,0,0,.3); }
+    .test-emoji { font-size:22px; filter:drop-shadow(0 0 4px #aaa); }
+    .test-info { flex:1; }
+    .test-title { font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px; }
+    .test-desc { font-size:11.5px;color:var(--muted); }
+    .test-stats { display:flex;align-items:center;gap:10px; }
+    .test-join-btn {
+      background:var(--surface2); color:var(--text); border:1px solid var(--border);
+      border-radius:10px; font-family:'Syne',sans-serif; font-weight:700; font-size:12px;
+      padding:8px 16px; cursor:pointer; white-space:nowrap; transition:all .15s;
+    }
+    .test-join-btn:hover { background:var(--border); transform:translateY(-1px); }
 
     /* ── APP ── */
     #app { display:none; height:100vh; flex-direction:column; }
@@ -147,11 +215,19 @@
     .app-logo { font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);text-shadow:0 0 10px var(--accent); }
     .room-tag { font-family:'DM Mono',monospace;font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 10px;color:var(--muted); }
     .header-spacer { flex:1; }
+    .app-online-badge {
+      display:flex; align-items:center; gap:6px;
+      font-family:'DM Mono',monospace; font-size:12px; color:#00ffcc;
+      background:rgba(0,255,200,.08); border:1px solid rgba(0,255,200,.25);
+      border-radius:20px; padding:4px 12px;
+    }
+    .app-online-dot { width:6px;height:6px;border-radius:50%;background:#00ffcc;box-shadow:0 0 6px #00ffcc;animation:dotPulse 2s ease-in-out infinite; }
 
     .main-layout { display:flex;flex:1;overflow:hidden;position:relative; }
     .video-area { flex:1;background:#000;position:relative;overflow:hidden; }
     #jaas-container { width:100%;height:100%; }
 
+    /* ── CHAT PANEL ── */
     .chat-panel {
       width:340px;min-width:260px;max-width:55%;
       border-left:1px solid rgba(0,255,157,.3);
@@ -160,57 +236,41 @@
       box-shadow:inset 0 0 30px rgba(0,255,157,.08);
       position:relative;overflow:hidden;
     }
-    .resize-handle {
-      position:absolute;left:0;top:0;width:6px;height:100%;
-      background:transparent;cursor:col-resize;z-index:10;transition:background .2s;
-    }
+    .resize-handle { position:absolute;left:0;top:0;width:6px;height:100%;background:transparent;cursor:col-resize;z-index:10;transition:background .2s; }
     .resize-handle:hover { background:rgba(0,255,157,.4); }
-
     .chat-header {
       padding:14px 18px;border-bottom:1px solid rgba(0,255,157,.3);
       background:rgba(0,0,0,.4);font-weight:800;letter-spacing:.15em;
       color:var(--accent);text-shadow:0 0 10px var(--accent),0 0 20px var(--accent);
       position:relative;display:flex;align-items:center;justify-content:space-between;
     }
-    .chat-header::after {
-      content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;
-      background:linear-gradient(90deg,transparent,var(--neon-orange),transparent);
-      box-shadow:0 0 15px var(--neon-orange);
-    }
-
-    #chat-messages {
-      flex:1;overflow-y:auto;padding:20px 16px;
-      display:flex;flex-direction:column;gap:14px;
-      scroll-behavior:smooth;background:rgba(5,7,13,.6);
-    }
+    .chat-header::after { content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--neon-orange),transparent);box-shadow:0 0 15px var(--neon-orange); }
+    #chat-messages { flex:1;overflow-y:auto;padding:20px 16px;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth;background:rgba(5,7,13,.6); }
     #chat-messages::-webkit-scrollbar { width:5px; }
     #chat-messages::-webkit-scrollbar-track { background:transparent; }
     #chat-messages::-webkit-scrollbar-thumb { background:var(--neon-cyan);border-radius:10px;box-shadow:0 0 10px var(--neon-cyan); }
-
     .msg { max-width:82%;padding:14px 18px;border-radius:18px;line-height:1.6;animation:neonPulseIn .5s ease-out; }
-    .msg.self { align-self:flex-end;background:linear-gradient(135deg,#00aaff88,#ff00aa66);border:1px solid #00aaff;color:#fff;box-shadow:0 0 8px #00aaff,0 0 16px #00aaff88,0 0 32px #ff00aa44; }
+    .msg.self { align-self:flex-end;background:linear-gradient(135deg,#00aaff88,#ff00aa66);border:1px solid #00aaff;color:#fff;box-shadow:0 0 8px #00aaff,0 0 16px #00aaff88; }
     .msg:not(.self) { align-self:flex-start;background:linear-gradient(135deg,#00ff9d88,#ffaa0066);border:1px solid #00ff9d;color:#fff;box-shadow:0 0 8px #00ff9d,0 0 16px #00ff9d88; }
     .msg .msg-meta { display:flex;align-items:baseline;gap:10px;margin-bottom:8px; }
     .msg .msg-name { font-size:13.5px;font-weight:700;letter-spacing:.04em;text-shadow:0 0 6px currentColor; }
     .msg .msg-time { font-family:'DM Mono',monospace;font-size:10.5px;color:rgba(255,255,255,.7); }
     .msg .msg-text { font-size:15px;line-height:1.6;word-break:break-word; }
-
     .system-msg { align-self:center;max-width:90%;text-align:center;font-size:11.5px;color:#ff8800;font-style:italic;background:rgba(255,102,0,.12);padding:10px 16px;border-radius:12px;margin:12px 0;box-shadow:0 0 20px rgba(255,102,0,.4);animation:glowPulse 3s infinite alternate; }
     @keyframes neonPulseIn { from{opacity:0;transform:scale(.92);} to{opacity:1;transform:scale(1);} }
     @keyframes glowPulse { from{box-shadow:0 0 12px rgba(255,102,0,.3);} to{box-shadow:0 0 28px rgba(255,102,0,.7),0 0 40px rgba(255,102,0,.4);} }
-
     .chat-input-area { padding:12px;border-top:1px solid rgba(0,255,157,.3);display:flex;gap:8px;background:rgba(0,0,0,.4); }
     #chat-input { flex:1;background:rgba(10,15,25,.7);border:1px solid #00ff9d44;border-radius:10px;color:#fff;font-size:14px;padding:12px 16px;outline:none;transition:all .2s; }
     #chat-input:focus { border-color:var(--neon-orange);box-shadow:inset 0 0 10px var(--neon-orange),0 0 16px var(--neon-orange),0 0 30px rgba(255,102,0,.5); }
     .send-btn { background:linear-gradient(135deg,#ff6600,#ff8800);border:none;border-radius:10px;color:#fff;font-size:18px;width:44px;height:44px;cursor:pointer;box-shadow:0 0 12px #ff6600;transition:all .15s; }
     .send-btn:hover { transform:scale(1.08); }
-
     .users-area { border-top:1px solid var(--border);padding:10px 14px 0; }
     .users-label { font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px; }
     .users-list { display:flex;flex-wrap:wrap;gap:8px;padding-bottom:10px; }
     .user-pill { font-size:11.5px;background:rgba(0,255,157,.12);border:1px solid rgba(0,255,157,.4);border-radius:20px;padding:4px 12px;color:#fff;box-shadow:0 0 10px rgba(0,255,157,.3); }
     .user-pill.me { background:rgba(255,102,0,.25);border-color:var(--neon-orange);box-shadow:0 0 14px var(--neon-orange); }
 
+    /* Settings modal */
     #settings-modal { display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;align-items:center;justify-content:center; }
 
     @media(max-width:768px) {
@@ -228,6 +288,13 @@
     <div class="blob blob-2"></div>
     <div class="blob blob-3"></div>
   </div>
+
+  <!-- Total online badge -->
+  <div class="total-online-badge" id="total-online-badge">
+    <div class="total-online-dot"></div>
+    <span id="total-online-count">—</span> online
+  </div>
+
   <div class="lobby-inner">
     <div class="lobby-hero">
       <div class="lobby-logo"><span class="logo-hex">⬡</span> PeerRoom</div>
@@ -235,18 +302,33 @@
       <p>Instant video &amp; text chat — pick a room or make your own</p>
     </div>
 
-    <div class="name-bar">
-      <label for="name-input">Your name</label>
-      <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off" />
+    <!-- Name + Custom room on same row -->
+    <div class="entry-row">
+      <div class="entry-field">
+        <label class="lbl-name" for="name-input">Your name</label>
+        <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off" />
+      </div>
+      <div class="entry-field custom">
+        <label class="lbl-room" for="room-input">Custom room</label>
+        <input id="room-input" type="text" placeholder="my-room-id" maxlength="40" autocomplete="off" />
+      </div>
+      <button class="entry-join-btn" id="custom-join-btn">Enter →</button>
     </div>
 
-    <div class="section-label">Pick a room to join</div>
+    <div class="section-label">Choose a room</div>
     <div class="room-grid" id="room-grid"></div>
 
-    <div class="custom-room-strip">
-      <span class="strip-label">Custom Room</span>
-      <input id="room-input" class="strip-input" type="text" placeholder="enter-a-room-id" maxlength="40" autocomplete="off" />
-      <button class="strip-btn" id="custom-join-btn">Enter →</button>
+    <!-- Test room strip -->
+    <div class="test-room-strip" id="test-room-strip">
+      <span class="test-emoji">🧪</span>
+      <div class="test-info">
+        <div class="test-title">Test Room</div>
+        <div class="test-desc">Try out camera, mic and chat before joining a real room</div>
+      </div>
+      <div class="test-stats" id="test-stats">
+        <!-- populated by JS -->
+      </div>
+      <button class="test-join-btn">Join Test →</button>
     </div>
   </div>
 </div>
@@ -257,7 +339,10 @@
     <span class="app-logo">⬡ PeerRoom</span>
     <div class="room-tag" id="room-display"></div>
     <div class="header-spacer"></div>
-    <span id="user-count-label" style="font-size:13px;color:var(--muted);">1 person</span>
+    <div class="app-online-badge">
+      <div class="app-online-dot"></div>
+      <span id="app-online-count">—</span> online
+    </div>
   </header>
   <div class="main-layout">
     <div class="video-area">
@@ -302,9 +387,23 @@
   </div>
 </div>
 
-<!-- PLAIN SCRIPT — not type="module", so all functions are global/accessible -->
 <script>
 (function() {
+
+  /* SVG icon helpers */
+  var ICONS = {
+    person: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
+    camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>',
+    screen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'
+  };
+
+  function statsHtml(users, cameras, screens) {
+    return '<span class="stat-item">' + ICONS.person + '<span class="stat-num">' + users + '</span></span>' +
+           '<span class="stat-item">' + ICONS.camera + '<span class="stat-num">' + cameras + '</span></span>' +
+           '<span class="stat-item">' + ICONS.screen + '<span class="stat-num">' + screens + '</span></span>';
+  }
+
+  /* ── Preset rooms ── */
   var PRESETS = [
     { id:'stoners',       name:'Stoners',       emoji:'🌿', desc:'Chill vibes only',        color:'#39d353' },
     { id:'gamers',        name:'Gamers',         emoji:'🎮', desc:"Let's play something",    color:'#00aaff' },
@@ -317,33 +416,94 @@
     { id:'random',        name:'Random',         emoji:'🎲', desc:'Anything goes in here',   color:'#ff3399' }
   ];
 
+  /* ── State ── */
   var myName='', myRoomId='', myUserId='', jaasAPI=null;
   var userSettings = JSON.parse(localStorage.getItem('peerroom_chat_settings') || 'null') || {
     nameColor:'#00ff9d', font:"'Syne',sans-serif", bold:false, randomOnJoin:true
   };
 
-  /* Build room grid */
+  /* ── Build grid ── */
   function buildGrid() {
     var grid = document.getElementById('room-grid');
-    PRESETS.forEach(function(room) {
+    PRESETS.forEach(function(room, i) {
       var card = document.createElement('div');
       card.className = 'room-card';
       card.style.setProperty('--c', room.color);
+      card.id = 'card-' + room.id;
       card.innerHTML =
+        '<span class="room-tag-badge">#' + room.id + '</span>' +
         '<span class="room-emoji">' + room.emoji + '</span>' +
         '<div class="room-name">' + room.name + '</div>' +
         '<div class="room-desc">' + room.desc + '</div>' +
-        '<span class="room-tag-badge">#' + room.id + '</span>';
+        '<div class="room-stats" id="stats-' + room.id + '">' +
+          statsHtml(0, 0, 0) +
+          '<div class="card-live-dot" id="dot-' + room.id + '"></div>' +
+        '</div>';
       card.addEventListener('click', function() { enterRoom(room.id); });
       grid.appendChild(card);
     });
+
+    // Test room strip click
+    document.getElementById('test-room-strip').addEventListener('click', function() {
+      enterRoom('test');
+    });
   }
 
-  /* Require name before joining */
+  /* ── Subscribe to live room stats for all preset rooms + test ── */
+  function subscribeRoomStats() {
+    var allRooms = PRESETS.map(function(r){ return r.id; }).concat(['test']);
+
+    // Total site presence ref
+    var totalRef;
+
+    function setupFirebase() {
+      var fb = window._fb;
+
+      // ── per-room user watchers ──
+      allRooms.forEach(function(roomId) {
+        fb.onValue(fb.ref(fb.db, 'rooms/' + roomId + '/users'), function(snap) {
+          var users = snap.val() || {};
+          var userCount = Object.keys(users).length;
+          var camCount = 0, screenCount = 0;
+          Object.keys(users).forEach(function(uid) {
+            var u = users[uid];
+            if (u.hasCamera) camCount++;
+            if (u.hasScreen) screenCount++;
+          });
+
+          if (roomId === 'test') {
+            var ts = document.getElementById('test-stats');
+            if (ts) ts.innerHTML = statsHtml(userCount, camCount, screenCount);
+          } else {
+            var statsEl = document.getElementById('stats-' + roomId);
+            var dotEl   = document.getElementById('dot-' + roomId);
+            if (statsEl) {
+              statsEl.innerHTML = statsHtml(userCount, camCount, screenCount) +
+                '<div class="card-live-dot' + (userCount > 0 ? ' active' : '') + '" id="dot-' + roomId + '"></div>';
+            }
+          }
+        });
+      });
+
+      // ── total site presence ──
+      // We track a global /presence node. Each session writes its userId there.
+      fb.onValue(fb.ref(fb.db, 'presence'), function(snap) {
+        var count = snap.val() ? Object.keys(snap.val()).length : 0;
+        document.getElementById('total-online-count').textContent = count;
+        var appEl = document.getElementById('app-online-count');
+        if (appEl) appEl.textContent = count;
+      });
+    }
+
+    if (window._fb) { setupFirebase(); }
+    else { window.addEventListener('firebase-ready', setupFirebase, { once:true }); }
+  }
+
+  /* ── Require name ── */
   function requireName() {
     var n = document.getElementById('name-input').value.trim();
     if (!n) {
-      var nb = document.querySelector('.name-bar');
+      var nb = document.querySelector('.entry-field');
       nb.style.boxShadow = '0 0 0 2px #ff4466, 0 0 20px rgba(255,68,102,.3)';
       document.getElementById('name-input').focus();
       setTimeout(function(){ nb.style.boxShadow=''; }, 1800);
@@ -352,7 +512,7 @@
     return n;
   }
 
-  /* Enter a room */
+  /* ── Enter room ── */
   function enterRoom(roomId) {
     var name = requireName();
     if (!name) return;
@@ -365,16 +525,21 @@
     document.getElementById('lobby').style.display = 'none';
     document.getElementById('app').classList.add('visible');
 
-    /* Firebase setup — wait if not ready yet */
     function doFirebase() {
       var fb = window._fb;
       var myColor = userSettings.randomOnJoin
         ? '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6,'0')
         : userSettings.nameColor;
 
+      // Room presence
       var userRef = fb.ref(fb.db, 'rooms/' + roomId + '/users/' + myUserId);
-      fb.set(userRef, { name:myName, joined:Date.now(), color:myColor });
+      fb.set(userRef, { name:myName, joined:Date.now(), color:myColor, hasCamera:false, hasScreen:false });
       fb.onDisconnect(userRef).remove();
+
+      // Global presence
+      var presRef = fb.ref(fb.db, 'presence/' + myUserId);
+      fb.set(presRef, { name:myName, room:roomId, ts:Date.now() });
+      fb.onDisconnect(presRef).remove();
 
       fb.onValue(fb.ref(fb.db, 'rooms/' + roomId + '/users'), function(snap) {
         updateUserList(snap.val() || {});
@@ -383,11 +548,14 @@
         var msg = snap.val() || {};
         addChatMsg(msg.name, msg.text, msg.time, msg.userId === myUserId, msg.color || '#ffffff');
       });
+
+      // Update camera/screen state when JaaS fires events (best-effort)
+      window._myUserRef = userRef;
     }
+
     if (window._fb) { doFirebase(); }
     else { window.addEventListener('firebase-ready', doFirebase, { once:true }); }
 
-    /* JaaS video — wait if not ready yet */
     function startVideo() {
       try {
         jaasAPI = new JitsiMeetExternalAPI('8x8.vc', {
@@ -409,23 +577,38 @@
           },
           userInfo:{ displayName:name }
         });
+
+        // Track camera/screen state in Firebase
+        jaasAPI.addEventListeners({
+          videoMuteStatusChanged: function(e) {
+            if (window._myUserRef && window._fb) {
+              window._fb.set(window._fb.ref(window._fb.db,
+                'rooms/' + roomId + '/users/' + myUserId + '/hasCamera'), !e.muted);
+            }
+          },
+          screenSharingStatusChanged: function(e) {
+            if (window._myUserRef && window._fb) {
+              window._fb.set(window._fb.ref(window._fb.db,
+                'rooms/' + roomId + '/users/' + myUserId + '/hasScreen'), e.on);
+            }
+          }
+        });
+
         addSystemMsg('Video room connected — allow camera/mic when prompted');
       } catch(err) {
         addSystemMsg('Video connection failed: ' + (err.message || 'Unknown error'));
       }
     }
+
     if (typeof JitsiMeetExternalAPI !== 'undefined') { startVideo(); }
     else {
-      var checkInterval = setInterval(function() {
-        if (typeof JitsiMeetExternalAPI !== 'undefined') {
-          clearInterval(checkInterval);
-          startVideo();
-        }
+      var chk = setInterval(function() {
+        if (typeof JitsiMeetExternalAPI !== 'undefined') { clearInterval(chk); startVideo(); }
       }, 200);
     }
   }
 
-  /* User list */
+  /* ── User list ── */
   function updateUserList(usersData) {
     var list = document.getElementById('users-list');
     list.innerHTML = '';
@@ -439,10 +622,10 @@
       list.appendChild(pill);
       count++;
     });
-    document.getElementById('user-count-label').textContent = count + (count===1?' person':' people');
+    document.getElementById('user-count-label') && (document.getElementById('user-count-label').textContent = count + (count===1?' person':' people'));
   }
 
-  /* Chat */
+  /* ── Chat ── */
   function addChatMsg(name, text, timestamp, isSelf, color) {
     var container = document.getElementById('chat-messages');
     var time = new Date(timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -481,31 +664,27 @@
     return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  /* Resize handle */
+  /* ── Resize ── */
   function initResize() {
     var handle = document.getElementById('resize-handle');
     var panel  = document.getElementById('chat-panel');
     var dragging=false, startX=0, startW=0;
     handle.addEventListener('mousedown', function(e) {
       dragging=true; startX=e.clientX; startW=panel.offsetWidth;
-      document.body.style.cursor='col-resize';
-      document.body.style.userSelect='none';
+      document.body.style.cursor='col-resize'; document.body.style.userSelect='none';
       e.preventDefault();
     });
     document.addEventListener('mousemove', function(e) {
       if (!dragging) return;
-      var newW = Math.max(260, Math.min(700, startW + (startX - e.clientX)));
-      panel.style.width = newW + 'px';
+      panel.style.width = Math.max(260, Math.min(700, startW + (startX - e.clientX))) + 'px';
     });
     document.addEventListener('mouseup', function() {
       if (!dragging) return;
-      dragging=false;
-      document.body.style.cursor='';
-      document.body.style.userSelect='';
+      dragging=false; document.body.style.cursor=''; document.body.style.userSelect='';
     });
   }
 
-  /* Settings */
+  /* ── Settings ── */
   function openSettings() {
     document.getElementById('color-picker').value   = userSettings.nameColor;
     document.getElementById('font-select').value    = userSettings.font;
@@ -523,25 +702,24 @@
     addSystemMsg('Settings saved!');
   }
 
-  /* Init */
+  /* ── Init ── */
   document.addEventListener('DOMContentLoaded', function() {
     buildGrid();
     initResize();
+    subscribeRoomStats();
 
     document.getElementById('custom-join-btn').addEventListener('click', function() {
       var raw = document.getElementById('room-input').value.trim().replace(/\s+/g,'-').toLowerCase();
       enterRoom(raw || 'general');
     });
     document.getElementById('room-input').addEventListener('keydown', function(e) {
-      if (e.key==='Enter') {
-        var raw = this.value.trim().replace(/\s+/g,'-').toLowerCase();
-        enterRoom(raw || 'general');
-      }
+      if (e.key==='Enter') { var raw=this.value.trim().replace(/\s+/g,'-').toLowerCase(); enterRoom(raw||'general'); }
+    });
+    document.getElementById('name-input').addEventListener('keydown', function(e) {
+      if (e.key==='Enter') document.getElementById('room-input').focus();
     });
     document.getElementById('send-btn').addEventListener('click', sendChat);
-    document.getElementById('chat-input').addEventListener('keydown', function(e) {
-      if (e.key==='Enter') sendChat();
-    });
+    document.getElementById('chat-input').addEventListener('keydown', function(e) { if(e.key==='Enter') sendChat(); });
     document.getElementById('settings-btn').addEventListener('click', openSettings);
     document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
     document.getElementById('close-settings-btn').addEventListener('click', function() {
