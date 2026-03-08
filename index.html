@@ -12,12 +12,9 @@
     import { getDatabase, ref, set, onValue, push, onDisconnect, remove, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     window.firebase = { initializeApp, getDatabase, ref, set, onValue, push, onDisconnect, remove, onChildAdded };
   </script>
-  <!-- LiveKit Client SDK – official pinned version -->
-  <script src="https://unpkg.com/livekit-client@2.5.9/dist/livekit-client.umd.min.js" integrity="sha384-..." crossorigin="anonymous"></script>
-  <!-- LiveKit Server SDK for token generation (client-side testing only) -->
-  <script src="https://unpkg.com/livekit-server-sdk@2.5.9/dist/livekit-server-sdk.umd.min.js" integrity="sha384-..." crossorigin="anonymous"></script>
+  <!-- LiveKit Client SDK from cdnjs (reliable mirror) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/livekit-client/2.5.9/livekit-client.umd.min.js"></script>
   <style>
-    /* Your full neon/glow/resizable chat styles – unchanged from working version */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg: #0b0d11;
@@ -238,26 +235,53 @@ document.addEventListener('mouseup', () => {
   document.body.style.cursor = 'default';
 });
 
+// Simple JWT token generator (no server-sdk dependency)
 function generateToken(roomName, participantName) {
-  if (typeof LiveKitServer === 'undefined' || !LiveKitServer.AccessToken) {
-    console.error('LiveKitServer SDK not loaded');
-    addSystemMsg('Error: LiveKit SDK failed to load. Please refresh the page.');
+  if (typeof LiveKit === 'undefined' || !LiveKit.Room) {
+    console.error('LiveKit client not loaded');
+    addSystemMsg('Error: Video SDK failed to load. Please refresh the page.');
     return null;
   }
 
-  const at = new LiveKitServer.AccessToken(API_KEY, API_SECRET, {
-    identity: participantName
-  });
+  // Base64URL encode helper
+  const b64u = str => btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-  at.addGrant({
-    roomJoin: true,
-    room: roomName,
-    canPublish: true,
-    canSubscribe: true,
-    canPublishData: true
-  });
+  const header = b64u(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const payload = b64u(JSON.stringify({
+    iss: API_KEY,
+    sub: participantName,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+    grants: {
+      video: {
+        roomJoin: true,
+        room: roomName,
+        canPublish: true,
+        canSubscribe: true,
+        canPublishData: true
+      }
+    }
+  }));
 
-  return at.toJwt();
+  const unsigned = `${header}.${payload}`;
+
+  // HMAC-SHA256 signature (browser crypto)
+  return crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(API_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  ).then(key => {
+    return crypto.subtle.sign('HMAC', key, new TextEncoder().encode(unsigned));
+  }).then(sig => {
+    const signature = b64u(String.fromCharCode(...new Uint8Array(sig)));
+    return `${unsigned}.${signature}`;
+  }).catch(err => {
+    console.error('Token generation failed:', err);
+    addSystemMsg('Failed to generate video token: ' + err.message);
+    return null;
+  });
 }
 
 window.joinRoom = async function() {
@@ -291,10 +315,9 @@ window.joinRoom = async function() {
     addChatMsg(msg.name, msg.text, msg.time, msg.userId === myUserId, msg.color || '#ffffff');
   });
 
-  // Check if LiveKit loaded
   if (typeof LiveKit === 'undefined' || !LiveKit.Room) {
     console.error('LiveKit client SDK not loaded');
-    addSystemMsg('Error: Video SDK failed to load. Please refresh or try another browser.');
+    addSystemMsg('Error: Video SDK failed to load. Please refresh the page or try another browser.');
     return;
   }
 
@@ -320,7 +343,8 @@ window.joinRoom = async function() {
   });
 
   try {
-    const token = generateToken(roomId, myName);
+    console.log('Generating token...');
+    const token = await generateToken(roomId, myName);
     if (!token) return;
 
     console.log('Connecting with token...');
@@ -334,7 +358,7 @@ window.joinRoom = async function() {
       audio: true
     }).catch(err => {
       console.error('createLocalTracks failed:', err);
-      addSystemMsg('Could not access camera/mic: ' + err.message);
+      addSystemMsg('Could not access camera/mic: ' + (err.message || 'Permission denied or device error'));
       return [];
     });
 
@@ -459,7 +483,7 @@ function addChatMsg(name, text, timestamp, isSelf, color = '#ffffff') {
 }
 
 function escapeHtml(str) {
-  if (str == null) return ''; // prevent crash
+  if (str == null) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
