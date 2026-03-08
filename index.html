@@ -12,11 +12,12 @@
     import { getDatabase, ref, set, onValue, push, onDisconnect, remove, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     window.firebase = { initializeApp, getDatabase, ref, set, onValue, push, onDisconnect, remove, onChildAdded };
   </script>
-  <!-- LiveKit Client SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.5.9/dist/livekit-client.umd.min.js"></script>
-  <!-- LiveKit Server SDK for token generation (testing only) -->
-  <script src="https://cdn.jsdelivr.net/npm/livekit-server-sdk@2.5.9/dist/livekit-server-sdk.umd.min.js"></script>
+  <!-- LiveKit Client SDK – official pinned version -->
+  <script src="https://unpkg.com/livekit-client@2.5.9/dist/livekit-client.umd.min.js" integrity="sha384-..." crossorigin="anonymous"></script>
+  <!-- LiveKit Server SDK for token generation (client-side testing only) -->
+  <script src="https://unpkg.com/livekit-server-sdk@2.5.9/dist/livekit-server-sdk.umd.min.js" integrity="sha384-..." crossorigin="anonymous"></script>
   <style>
+    /* Your full neon/glow/resizable chat styles – unchanged from working version */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg: #0b0d11;
@@ -238,6 +239,12 @@ document.addEventListener('mouseup', () => {
 });
 
 function generateToken(roomName, participantName) {
+  if (typeof LiveKitServer === 'undefined' || !LiveKitServer.AccessToken) {
+    console.error('LiveKitServer SDK not loaded');
+    addSystemMsg('Error: LiveKit SDK failed to load. Please refresh the page.');
+    return null;
+  }
+
   const at = new LiveKitServer.AccessToken(API_KEY, API_SECRET, {
     identity: participantName
   });
@@ -280,11 +287,17 @@ window.joinRoom = async function() {
   });
 
   firebase.onChildAdded(firebase.ref(db, `rooms/${roomId}/chat`), snap => {
-    const msg = snap.val();
+    const msg = snap.val() || {};
     addChatMsg(msg.name, msg.text, msg.time, msg.userId === myUserId, msg.color || '#ffffff');
   });
 
-  // LiveKit connection
+  // Check if LiveKit loaded
+  if (typeof LiveKit === 'undefined' || !LiveKit.Room) {
+    console.error('LiveKit client SDK not loaded');
+    addSystemMsg('Error: Video SDK failed to load. Please refresh or try another browser.');
+    return;
+  }
+
   livekitRoom = new LiveKit.Room();
 
   livekitRoom.on(LiveKit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
@@ -308,15 +321,21 @@ window.joinRoom = async function() {
 
   try {
     const token = generateToken(roomId, myName);
+    if (!token) return;
+
     console.log('Connecting with token...');
     await livekitRoom.connect(LIVEKIT_URL, token);
     console.log('Connected to room:', livekitRoom.name);
+    addSystemMsg('Connected to video room');
 
-    // Publish local tracks
     console.log('Requesting local tracks...');
     const tracks = await LiveKit.createLocalTracks({
       video: { facingMode: 'user' },
       audio: true
+    }).catch(err => {
+      console.error('createLocalTracks failed:', err);
+      addSystemMsg('Could not access camera/mic: ' + err.message);
+      return [];
     });
 
     console.log('Local tracks acquired:', tracks.length);
@@ -334,7 +353,7 @@ window.joinRoom = async function() {
 
   } catch (err) {
     console.error('LiveKit connection/publish failed:', err);
-    addSystemMsg('Video connection error: ' + (err.message || 'Unknown error'));
+    addSystemMsg('Video connection error: ' + (err.message || 'Unknown error - check console'));
   }
 };
 
@@ -440,7 +459,7 @@ function addChatMsg(name, text, timestamp, isSelf, color = '#ffffff') {
 }
 
 function escapeHtml(str) {
-  if (str == null) return ''; // prevent crash on undefined/null
+  if (str == null) return ''; // prevent crash
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
@@ -448,7 +467,7 @@ function addSystemMsg(text) {
   const container = document.getElementById('chat-messages');
   const div = document.createElement('div');
   div.className = 'system-msg';
-  div.textContent = text;
+  div.textContent = text || 'System message';
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 }
