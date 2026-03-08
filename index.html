@@ -444,7 +444,7 @@
 
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-  import { getDatabase, ref, onValue, set, push, onDisconnect, remove, onChildAdded } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
+  import { getDatabase, ref, onValue, set, push, onDisconnect, remove, onChildAdded, query, limitToLast } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
 
   const firebaseConfig = {
     apiKey: "AIzaSyAUA3bn3AoK_y2dEY64ipEzS8YGM-dy8T8",
@@ -459,30 +459,14 @@
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
 
-  const ICE_SERVERS = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-    ]
-  };
-
   let myName = '';
   let myRoomId = '';
   let myUserId = '';
-  let localStream = null;
-
-  const peers = {};
-  const processedSignals = new Set();
-
-  let micOn = true;
-  let camOn = true;
 
   window.joinRoom = async function() {
     const name = document.getElementById('name-input').value.trim();
-    const roomId = document.getElementById('room-input').value.trim().replace(/\s+/g, '-').toLowerCase() || 'general';
-
+    let roomId = document.getElementById('room-input').value.trim().replace(/\s+/g, '-').toLowerCase();
+    if (!roomId) roomId = 'general';
     if (!name) {
       alert('Please enter your name.');
       return;
@@ -490,7 +474,7 @@
 
     myName = name;
     myRoomId = roomId;
-    myUserId = 'user-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5);
+    myUserId = 'user-' + Date.now() + Math.random().toString(36).substring(2, 6);
 
     location.hash = roomId;
     document.getElementById('room-display').textContent = '# ' + roomId;
@@ -498,252 +482,58 @@
     document.getElementById('lobby').style.display = 'none';
     document.getElementById('app').classList.add('visible');
 
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    } catch (e) {
-      console.error('Camera/mic denied:', e);
-      alert('Please allow camera and microphone access!');
-      return;
-    }
+    // We'll add media later — for now just join text
+    addSystemMsg(`You joined #${roomId} as ${name}`);
 
-    addVideoTile('local', myName, localStream, true);
     await joinFirebaseRoom();
-    addSystemMsg('You joined #' + roomId);
   };
 
   async function joinFirebaseRoom() {
-    const roomRef = ref(db, `rooms/${myRoomId}/users/${myUserId}`);
+    const userRef = ref(db, `rooms/${myRoomId}/users/${myUserId}`);
+    await set(userRef, { name: myName, joined: Date.now() });
+    onDisconnect(userRef).remove();
 
-    await set(roomRef, { name: myName, timestamp: Date.now() });
-    onDisconnect(roomRef).remove();
-
-    const usersRef = ref(db, `rooms/${myRoomId}/users`);
-    onValue(usersRef, (snapshot) => {
-      const users = snapshot.val() || {};
+    // Users list live
+    onValue(ref(db, `rooms/${myRoomId}/users`), (snap) => {
+      const users = snap.val() || {};
       updateUserList(users);
-
-      Object.keys(users).forEach(userId => {
-        if (userId !== myUserId && !peers[userId]) {
-          createPeer(userId, users[userId].name);
-        }
-      });
-
-      Object.keys(peers).forEach(userId => {
-        if (!users[userId]) {
-          closePeer(userId);
-        }
-      });
     });
 
-    const signalRef = ref(db, `rooms/${myRoomId}/signals/${myUserId}`);
-    onChildAdded(signalRef, async (snapshot) => {
-      const signal = snapshot.val();
-      const signalId = snapshot.key;
-      
-      if (processedSignals.has(signalId)) return;
-      processedSignals.add(signalId);
-
-      await handleSignal(signal);
-      remove(ref(db, `rooms/${myRoomId}/signals/${myUserId}/${signalId}`));
-    });
-
+    // Chat history + live
     const chatRef = ref(db, `rooms/${myRoomId}/chat`);
-    let firstLoad = true;
-    onValue(chatRef, (snapshot) => {
-      if (firstLoad) { firstLoad = false; return; }
-      const messages = snapshot.val() || {};
-      Object.values(messages).slice(-1).forEach(msg => {
-        if (msg.userId !== myUserId) {
-          addChatMsg(msg.name, msg.message, msg.timestamp, false);
-        }
-      });
+    const chatQuery = query(chatRef, limitToLast(100)); // last 100 msgs to avoid overload
+
+    onChildAdded(chatQuery, (snap) => {
+      const msg = snap.val();
+      if (msg) {
+        addChatMsg(msg.name, msg.message, msg.timestamp, msg.userId === myUserId);
+      }
     });
+
+    // Optional: clean old signals/users if needed, but skip for now
   }
-
-  async function sendSignal(toUserId, signal) {
-    const signalRef = ref(db, `rooms/${myRoomId}/signals/${toUserId}`);
-    await push(signalRef, { from: myUserId, fromName: myName, ...signal });
-  }
-
-  async function handleSignal(signal) {
-    const { from, type, offer, answer, candidate } = signal;
-
-    if (type === 'offer') {
-      await handleOffer(from, offer, signal.fromName);
-    } else if (type === 'answer') {
-      await handleAnswer(from, answer);
-    } else if (type === 'ice-candidate') {
-      await handleIceCandidate(from, candidate);
-    }
-  }
-
-  async function createPeer(userId, name) {
-    if (peers[userId]) return;
-
-    const pc = new RTCPeerConnection(ICE_SERVERS);
-    peers[userId] = { pc, name };
-
-    if (localStream) {
-      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-    }
-
-    const remoteStream = new MediaStream();
-    pc.ontrack = (e) => {
-      remoteStream.addTrack(e.track);
-      if (!document.getElementById('tile-' + userId)) {
-        addVideoTile(userId, name, remoteStream, false);
-      }
-    };
-
-    pc.onicecandidate = (e) => {
-      if (e.candidate) {
-        sendSignal(userId, { type: 'ice-candidate', candidate: e.candidate });
-      }
-    };
-
-    pc.onconnectionstatechange = () => {
-      if (['failed', 'closed'].includes(pc.connectionState)) {
-        closePeer(userId);
-      }
-    };
-
-    if (myUserId < userId) {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      await sendSignal(userId, { type: 'offer', offer });
-    }
-  }
-
-  async function handleOffer(fromUserId, offer, name) {
-    let peer = peers[fromUserId];
-    
-    if (!peer) {
-      await createPeer(fromUserId, name || 'User');
-      peer = peers[fromUserId];
-    }
-
-    const state = peer.pc.signalingState;
-    if (state !== 'stable' && state !== 'have-local-offer') {
-      console.log('⚠️ Ignoring offer, wrong state:', state);
-      return;
-    }
-
-    try {
-      await peer.pc.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await peer.pc.createAnswer();
-      await peer.pc.setLocalDescription(answer);
-      await sendSignal(fromUserId, { type: 'answer', answer });
-    } catch (e) {
-      console.error('Error handling offer:', e);
-    }
-  }
-
-  async function handleAnswer(fromUserId, answer) {
-    const peer = peers[fromUserId];
-    if (!peer?.pc) return;
-
-    const state = peer.pc.signalingState;
-    if (state !== 'have-local-offer') {
-      console.log('⚠️ Ignoring answer, wrong state:', state);
-      return;
-    }
-
-    try {
-      await peer.pc.setRemoteDescription(new RTCSessionDescription(answer));
-    } catch (e) {
-      console.error('Error handling answer:', e);
-    }
-  }
-
-  async function handleIceCandidate(fromUserId, candidate) {
-    const peer = peers[fromUserId];
-    if (peer?.pc && candidate) {
-      try {
-        await peer.pc.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (e) {}
-    }
-  }
-
-  function closePeer(userId) {
-    if (peers[userId]) {
-      peers[userId].pc.close();
-      delete peers[userId];
-    }
-    const tile = document.getElementById('tile-' + userId);
-    if (tile) tile.remove();
-  }
-
-  function addVideoTile(id, name, stream, isLocal) {
-    const tileId = 'tile-' + id;
-    if (document.getElementById(tileId)) return;
-
-    const tile = document.createElement('div');
-    tile.className = 'video-tile' + (isLocal ? ' local' : '');
-    tile.id = tileId;
-
-    const video = document.createElement('video');
-    video.autoplay = true;
-    video.playsInline = true;
-    video.muted = isLocal;
-    video.srcObject = stream;
-
-    const label = document.createElement('div');
-    label.className = 'tile-label';
-    label.textContent = name;
-
-    tile.appendChild(video);
-    tile.appendChild(label);
-    document.getElementById('video-grid').appendChild(tile);
-  }
-
-  window.toggleMic = function() {
-    if (!localStream) return;
-    micOn = !micOn;
-    localStream.getAudioTracks().forEach(t => t.enabled = micOn);
-    const btn = document.getElementById('btn-mic');
-    btn.textContent = micOn ? '🎙️' : '🔇';
-    btn.classList.toggle('off', !micOn);
-  };
-
-  window.toggleCam = function() {
-    if (!localStream) return;
-    camOn = !camOn;
-    localStream.getVideoTracks().forEach(t => t.enabled = camOn);
-    const btn = document.getElementById('btn-cam');
-    btn.textContent = camOn ? '📷' : '🚫';
-    btn.classList.toggle('off', !camOn);
-  };
-
-  window.leaveRoom = function() {
-    if (localStream) localStream.getTracks().forEach(t => t.stop());
-    Object.keys(peers).forEach(id => closePeer(id));
-    location.hash = '';
-    location.reload();
-  };
 
   window.sendChat = async function() {
     const input = document.getElementById('chat-input');
-    const msg = input.value.trim();
-    if (!msg) return;
+    const message = input.value.trim();
+    if (!message) return;
 
     const chatRef = ref(db, `rooms/${myRoomId}/chat`);
     await push(chatRef, {
       userId: myUserId,
       name: myName,
-      message: msg,
+      message,
       timestamp: Date.now()
     });
 
-    addChatMsg(myName, msg, Date.now(), true);
     input.value = '';
   };
 
   function addChatMsg(name, text, timestamp, isSelf) {
     const container = document.getElementById('chat-messages');
     const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
     const div = document.createElement('div');
-    div.className = 'msg' + (isSelf ? ' self' : '');
+    div.className = `msg${isSelf ? ' self' : ''}`;
     div.innerHTML = `
       <div class="msg-meta">
         <span class="msg-name">${escapeHtml(name)}</span>
@@ -765,23 +555,18 @@
   }
 
   function updateUserList(users) {
-    const ul = document.getElementById('users-list');
-    ul.innerHTML = '';
-
-    const userList = Object.entries(users).map(([id, data]) => ({
-      id, name: data.name, isMe: id === myUserId
-    }));
-
-    userList.forEach(user => {
+    const list = document.getElementById('users-list');
+    list.innerHTML = '';
+    const userArray = Object.entries(users).map(([id, data]) => ({ id, name: data.name, isMe: id === myUserId }));
+    userArray.forEach(u => {
       const pill = document.createElement('div');
-      pill.className = 'user-pill' + (user.isMe ? ' me' : '');
-      pill.textContent = user.name;
-      ul.appendChild(pill);
+      pill.className = `user-pill${u.isMe ? ' me' : ''}`;
+      pill.textContent = u.name;
+      list.appendChild(pill);
     });
 
-    const count = userList.length;
-    document.getElementById('user-count-label').textContent =
-      count === 1 ? '1 person' : count + ' people';
+    const count = userArray.length;
+    document.getElementById('user-count-label').textContent = count === 1 ? '1 person' : `${count} people`;
   }
 
   function escapeHtml(str) {
@@ -794,6 +579,5 @@
     document.getElementById('name-input').focus();
   });
 </script>
-
 </body>
 </html>
