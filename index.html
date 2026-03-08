@@ -12,7 +12,7 @@
     import { getDatabase, ref, set, onValue, push, onDisconnect, remove, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     window.firebase = { initializeApp, getDatabase, ref, set, onValue, push, onDisconnect, remove, onChildAdded };
   </script>
-  <!-- JaaS External API (your app ID) -->
+  <!-- JaaS External API -->
   <script src="https://8x8.vc/vpaas-magic-cookie-2ad209272b64436e963d9c99c03231c2/external_api.js" async></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -53,7 +53,7 @@
     .room-tag { font-family: 'DM Mono', monospace; font-size: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; color: var(--muted); }
     .header-spacer { flex: 1; }
     .main-layout { display: flex; flex: 1; overflow: hidden; position: relative; }
-    .video-area { flex: 1; background: #000; position: relative; }
+    .video-area { flex: 1; background: #000; position: relative; overflow: hidden; }
     #jaas-container { width: 100%; height: 100%; }
     .controls { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 14px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
     .ctrl-btn { width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .2s, border-color .2s, transform .15s; }
@@ -62,28 +62,104 @@
     .ctrl-btn.leave { background: var(--danger); border-color: var(--danger); color: #fff; }
     .ctrl-btn.leave:hover { opacity: .85; }
     .chat-panel {
-      width: 340px; min-width: 260px; max-width: 55%; border-left: 1px solid rgba(0,255,157,0.3); display: flex; flex-direction: column;
-      background: linear-gradient(180deg, #0f121a 0%, #0a0d14 100%); box-shadow: inset 0 0 30px rgba(0,255,157,0.08); position: relative; overflow: hidden; transition: width 0.1s ease;
+      width: 340px;
+      min-width: 260px;
+      max-width: 55%;
+      border-left: 1px solid rgba(0,255,157,0.3);
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, #0f121a 0%, #0a0d14 100%);
+      box-shadow: inset 0 0 30px rgba(0,255,157,0.08);
+      position: relative;
+      overflow: hidden;
+      transition: width 0.1s ease;
     }
-    .resize-handle { position: absolute; left: -5px; top: 0; width: 10px; height: 100%; background: transparent; cursor: col-resize; z-index: 10; }
-    .resize-handle:hover, .resize-handle:active { background: rgba(0,255,157,0.3); }
+    .resize-handle {
+      position: absolute;
+      left: -5px;
+      top: 0;
+      width: 10px;
+      height: 100%;
+      background: transparent;
+      cursor: col-resize;
+      z-index: 10;
+      transition: background 0.2s;
+    }
+    .resize-handle:hover, .resize-handle:active { background: rgba(0,255,157,0.5); }
     .chat-header {
-      padding: 14px 18px; border-bottom: 1px solid rgba(0,255,157,0.3); background: rgba(0,0,0,0.4); font-weight: 800; letter-spacing: 0.15em;
-      color: var(--accent); text-shadow: 0 0 10px var(--accent), 0 0 20px var(--accent); position: relative; display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(0,255,157,0.3);
+      background: rgba(0,0,0,0.4);
+      font-weight: 800;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      text-shadow: 0 0 10px var(--accent), 0 0 20px var(--accent);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    .chat-header::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--neon-orange), transparent); box-shadow: 0 0 15px var(--neon-orange); }
-    #chat-messages { flex: 1; overflow-y: auto; padding: 20px 16px; display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth; background: rgba(5,7,13,0.6); }
+    .chat-header::after {
+      content: '';
+      position: absolute;
+      bottom: -1px; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--neon-orange), transparent);
+      box-shadow: 0 0 15px var(--neon-orange);
+    }
+    #chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-behavior: smooth;
+      background: rgba(5,7,13,0.6);
+    }
     #chat-messages::-webkit-scrollbar { width: 5px; }
     #chat-messages::-webkit-scrollbar-track { background: transparent; }
     #chat-messages::-webkit-scrollbar-thumb { background: var(--neon-cyan); border-radius: 10px; box-shadow: 0 0 10px var(--neon-cyan); }
-    .msg { max-width: 82%; padding: 14px 18px; border-radius: 18px; line-height: 1.6; animation: neonPulseIn 0.6s ease-out; position: relative; overflow: visible; }
-    .msg.self { align-self: flex-end; background: linear-gradient(135deg, #00aaff88, #ff00aa66); border: 1px solid #00aaff; color: white; box-shadow: 0 0 8px #00aaff, 0 0 16px #00aaff88, 0 0 32px #ff00aa44; }
-    .msg:not(.self) { align-self: flex-start; background: linear-gradient(135deg, #00ff9d88, #ffaa0066); border: 1px solid #00ff9d; color: white; box-shadow: 0 0 8px #00ff9d, 0 0 16px #00ff9d88, 0 0 32px #ff660044; }
+    .msg {
+      max-width: 82%;
+      padding: 14px 18px;
+      border-radius: 18px;
+      line-height: 1.6;
+      animation: neonPulseIn 0.6s ease-out;
+      position: relative;
+      overflow: visible;
+    }
+    .msg.self {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #00aaff88, #ff00aa66);
+      border: 1px solid #00aaff;
+      color: white;
+      box-shadow: 0 0 8px #00aaff, 0 0 16px #00aaff88, 0 0 32px #ff00aa44;
+    }
+    .msg:not(.self) {
+      align-self: flex-start;
+      background: linear-gradient(135deg, #00ff9d88, #ffaa0066);
+      border: 1px solid #00ff9d;
+      color: white;
+      box-shadow: 0 0 8px #00ff9d, 0 0 16px #00ff9d88, 0 0 32px #ff660044;
+    }
     .msg .msg-meta { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
     .msg .msg-name { font-size: 13.5px; font-weight: 700; letter-spacing: 0.04em; text-shadow: 0 0 6px currentColor; }
     .msg .msg-time { font-family: 'DM Mono', monospace; font-size: 10.5px; color: rgba(255,255,255,0.7); }
     .msg .msg-text { font-size: 15px; line-height: 1.6; text-shadow: 0 0 3px rgba(0,0,0,0.6); word-break: break-word; }
-    .system-msg { align-self: center; max-width: 90%; text-align: center; font-size: 11.5px; color: #ff8800; font-style: italic; background: rgba(255,102,0,0.12); padding: 10px 16px; border-radius: 12px; margin: 12px 0; box-shadow: 0 0 20px rgba(255,102,0,0.4); animation: glowPulse 3s infinite alternate; }
+    .system-msg {
+      align-self: center;
+      max-width: 90%;
+      text-align: center;
+      font-size: 11.5px;
+      color: #ff8800;
+      font-style: italic;
+      background: rgba(255,102,0,0.12);
+      padding: 10px 16px;
+      border-radius: 12px;
+      margin: 12px 0;
+      box-shadow: 0 0 20px rgba(255,102,0,0.4);
+      animation: glowPulse 3s infinite alternate;
+    }
     @keyframes neonPulseIn { from { opacity: 0; transform: scale(0.92); box-shadow: none; } to { opacity: 1; transform: scale(1); } }
     @keyframes glowPulse { from { box-shadow: 0 0 12px rgba(255,102,0,0.3); } to { box-shadow: 0 0 28px rgba(255,102,0,0.7), 0 0 40px rgba(255,102,0,0.4); } }
     .chat-input-area { padding: 12px; border-top: 1px solid rgba(0,255,157,0.3); display: flex; gap: 8px; background: rgba(0,0,0,0.4); }
@@ -209,7 +285,7 @@ document.addEventListener('mousemove', (e) => {
   if (!isResizing) return;
   const rect = document.querySelector('.main-layout').getBoundingClientRect();
   let newWidth = rect.right - e.clientX;
-  newWidth = Math.max(220, Math.min(600, newWidth));
+  newWidth = Math.max(260, Math.min(600, newWidth)); // enforce min/max
   chatPanel.style.width = newWidth + 'px';
 });
 
@@ -231,7 +307,6 @@ window.joinRoom = async function() {
   document.getElementById('lobby').style.display = 'none';
   document.getElementById('app').classList.add('visible');
 
-  // Firebase chat & users
   let myColor = userSettings.randomOnJoin 
     ? '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')
     : userSettings.nameColor;
@@ -250,7 +325,7 @@ window.joinRoom = async function() {
     addChatMsg(msg.name, msg.text, msg.time, msg.userId === myUserId, msg.color || '#ffffff');
   });
 
-  // JaaS integration - full embed into your video area
+  // JaaS integration
   const domain = '8x8.vc';
   const options = {
     roomName: `vpaas-magic-cookie-2ad209272b64436e963d9c99c03231c2/${roomId}`,
@@ -262,7 +337,7 @@ window.joinRoom = async function() {
       startWithVideoMuted: false,
       disableDeepLinking: true,
       prejoinPageEnabled: false,
-      toolbarButtons: ['microphone', 'camera', 'desktop', 'chat', 'raisehand', 'filmstrip'],
+      toolbarButtons: ['microphone', 'camera', 'desktop', 'chat', 'raisehand'],
       filmstripOnly: false,
       hideConferenceTimer: true,
       hideConferenceSubject: true
@@ -356,7 +431,6 @@ function addSystemMsg(text) {
   container.scrollTop = container.scrollHeight;
 }
 
-// Settings modal functions
 window.openChatSettings = function() {
   document.getElementById('color-picker').value = userSettings.nameColor;
   document.getElementById('font-select').value = userSettings.font;
