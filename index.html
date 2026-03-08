@@ -29,8 +29,6 @@
       --radius: 12px;
       --neon-cyan: #00ffff;
       --neon-orange: #ff6600;
-      --neon-magenta: #ff00aa;
-      --neon-lime: #39ff14;
     }
     html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; overflow: hidden; }
     #lobby { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 100; animation: fadeIn .4s ease; }
@@ -285,7 +283,7 @@ document.addEventListener('mousemove', (e) => {
   if (!isResizing) return;
   const rect = document.querySelector('.main-layout').getBoundingClientRect();
   let newWidth = rect.right - e.clientX;
-  newWidth = Math.max(260, Math.min(600, newWidth)); // enforce min/max
+  newWidth = Math.max(260, Math.min(600, newWidth)); // enforced limits
   chatPanel.style.width = newWidth + 'px';
 });
 
@@ -325,7 +323,7 @@ window.joinRoom = async function() {
     addChatMsg(msg.name, msg.text, msg.time, msg.userId === myUserId, msg.color || '#ffffff');
   });
 
-  // JaaS integration
+  // JaaS with gallery grid + no built-in chat
   const domain = '8x8.vc';
   const options = {
     roomName: `vpaas-magic-cookie-2ad209272b64436e963d9c99c03231c2/${roomId}`,
@@ -337,8 +335,10 @@ window.joinRoom = async function() {
       startWithVideoMuted: false,
       disableDeepLinking: true,
       prejoinPageEnabled: false,
-      toolbarButtons: ['microphone', 'camera', 'desktop', 'chat', 'raisehand'],
-      filmstripOnly: false,
+      disableChat: true,                    // ← removes Jitsi chat
+      tileView: { disabled: false },       // ← forces equal-size grid
+      startWithTileView: true,
+      toolbarButtons: ['microphone', 'camera', 'desktop', 'raisehand'],
       hideConferenceTimer: true,
       hideConferenceSubject: true
     },
@@ -349,7 +349,6 @@ window.joinRoom = async function() {
       APP_NAME: 'PeerRoom',
       DEFAULT_BACKGROUND: '#0b0d11',
       DISABLE_DOMINANT_SPEAKER_INDICATOR: true,
-      DISABLE_VIDEO_BACKGROUND: true,
       TOOLBAR_TIMEOUT: 4000,
       TOOLBAR_ALWAYS_VISIBLE: false
     },
@@ -360,7 +359,7 @@ window.joinRoom = async function() {
 
   try {
     jaasAPI = new JitsiMeetExternalAPI(domain, options);
-    console.log('JaaS connected');
+    console.log('JaaS connected in gallery mode');
     addSystemMsg('Video room connected — allow camera/mic when prompted');
   } catch (err) {
     console.error('JaaS error:', err);
@@ -431,6 +430,7 @@ function addSystemMsg(text) {
   container.scrollTop = container.scrollHeight;
 }
 
+// Settings modal
 window.openChatSettings = function() {
   document.getElementById('color-picker').value = userSettings.nameColor;
   document.getElementById('font-select').value = userSettings.font;
@@ -453,8 +453,8 @@ window.closeSettings = function() {
   document.getElementById('settings-modal').style.display = 'none';
 };
 
-window.toggleMic = function() { alert("Use the JaaS video controls (bottom toolbar) to toggle mic"); };
-window.toggleCam = function() { alert("Use the JaaS video controls (bottom toolbar) to toggle camera"); };
+window.toggleMic = function() { alert("Use the JaaS toolbar at the bottom of the video area"); };
+window.toggleCam = function() { alert("Use the JaaS toolbar at the bottom of the video area"); };
 window.leaveRoom = function() {
   if (jaasAPI) jaasAPI.dispose();
   location.reload();
