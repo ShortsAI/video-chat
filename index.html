@@ -119,9 +119,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 .main-layout{display:flex;flex:1;overflow:hidden}
 .video-wrap{flex:1;background:#000;position:relative;overflow:hidden}
 #jaas-container{width:100%;height:100%}
-#draw-canvas{position:absolute;inset:0;width:100%;height:100%;display:none;z-index:20;touch-action:none}
+/* Canvas sits above iframe — must block pointer events from iframe when active */
+#draw-canvas{position:absolute;inset:0;width:100%;height:100%;display:none;z-index:20;touch-action:none;background:transparent}
 #draw-canvas.on{display:block;cursor:crosshair}
-.draw-bar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:30;display:none;align-items:center;gap:7px;background:rgba(11,13,17,.93);border:1px solid var(--border);border-radius:12px;padding:8px 12px;backdrop-filter:blur(8px);white-space:nowrap}
+/* When draw is active, kill iframe pointer events so canvas gets them */
+.video-wrap.draw-active #jaas-container iframe,
+.video-wrap.draw-active #jaas-container{pointer-events:none}
+.draw-bar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:30;display:none;align-items:center;gap:7px;background:rgba(11,13,17,.93);border:1px solid var(--border);border-radius:12px;padding:8px 12px;backdrop-filter:blur(8px);white-space:nowrap;flex-wrap:wrap;max-width:95%}
 .draw-bar.on{display:flex}
 .dc-btn{width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:border-color .15s;flex-shrink:0}
 .dc-btn.sel{border-color:#fff;box-shadow:0 0 6px rgba(255,255,255,.5)}
@@ -131,6 +135,38 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 .db-post{background:var(--accent);color:#000;border:none;border-radius:7px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;padding:4px 12px;cursor:pointer;transition:opacity .15s}
 .db-post:hover{opacity:.85}
 .draw-color-preview{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.3);flex-shrink:0}
+
+/* RPG messages */
+.msg.rpg{align-self:center;max-width:96%;background:linear-gradient(135deg,rgba(20,10,40,.95),rgba(10,20,40,.95));border:1px solid #9933ff;box-shadow:0 0 14px rgba(153,51,255,.4),inset 0 0 20px rgba(153,51,255,.07);border-radius:14px;padding:12px 16px;animation:rpgIn .5s cubic-bezier(.17,.67,.35,1.3) both}
+@keyframes rpgIn{from{opacity:0;transform:scale(.85) translateY(10px)}to{opacity:1;transform:none}}
+.rpg-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.rpg-actor{font-size:22px;filter:drop-shadow(0 0 6px var(--rpg-col,#cc44ff))}
+.rpg-vs{font-size:11px;color:rgba(255,255,255,.4);font-family:'DM Mono',monospace}
+.rpg-target{font-size:22px;filter:drop-shadow(0 0 6px #ff4466)}
+.rpg-action-label{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;letter-spacing:.08em;color:var(--rpg-col,#cc44ff);text-shadow:0 0 10px var(--rpg-col,#cc44ff);margin-left:auto}
+.rpg-flavor{font-size:13px;color:rgba(255,255,255,.8);line-height:1.5;margin-bottom:8px}
+.rpg-stat-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rpg-dmg{font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:#ff4466;text-shadow:0 0 8px #ff4466;animation:dmgPop .4s ease-out both}
+.rpg-heal-val{font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:#00ff9d;text-shadow:0 0 8px #00ff9d;animation:dmgPop .4s ease-out both}
+@keyframes dmgPop{from{transform:scale(2);opacity:0}to{transform:scale(1);opacity:1}}
+.rpg-hp-wrap{flex:1;min-width:80px}
+.rpg-hp-label{font-size:9px;font-family:'DM Mono',monospace;color:rgba(255,255,255,.5);margin-bottom:2px;letter-spacing:.08em}
+.rpg-hp-bar{height:6px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden}
+.rpg-hp-fill{height:100%;border-radius:4px;transition:width .6s ease;background:linear-gradient(90deg,#ff4466,#ff9944)}
+.rpg-hp-fill.safe{background:linear-gradient(90deg,#00e5a0,#00ff9d)}
+.rpg-hp-fill.warn{background:linear-gradient(90deg,#ffcc00,#ff9900)}
+.rpg-class-badge{font-size:10px;font-family:'DM Mono',monospace;padding:2px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);background:rgba(255,255,255,.06)}
+/* RPG panel in chat */
+.rpg-panel{border-top:1px solid rgba(153,51,255,.25);padding:8px 12px;background:rgba(10,5,25,.6);flex-shrink:0;display:none}
+.rpg-panel.open{display:block}
+.rpg-panel-title{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#9933ff;text-shadow:0 0 8px #9933ff;margin-bottom:7px}
+.rpg-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:7px}
+.rpg-stat-cell{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:5px 8px}
+.rpg-stat-name{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.08em;text-transform:uppercase}
+.rpg-stat-val{font-size:15px;font-weight:700;color:var(--text)}
+.rpg-cmd-list{display:flex;flex-wrap:wrap;gap:4px}
+.rpg-cmd{font-size:10px;font-family:'DM Mono',monospace;padding:3px 7px;border-radius:5px;background:rgba(153,51,255,.15);border:1px solid rgba(153,51,255,.35);color:#cc88ff;cursor:pointer;transition:all .15s}
+.rpg-cmd:hover{background:rgba(153,51,255,.3)}
 
 /* Chat panel */
 .chat-panel{width:340px;min-width:260px;max-width:55%;border-left:1px solid rgba(0,255,157,.28);display:flex;flex-direction:column;background:linear-gradient(180deg,#0f121a,#0a0d14);box-shadow:inset 0 0 28px rgba(0,255,157,.07);position:relative;overflow:hidden}
@@ -295,7 +331,35 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
     <!-- Chat -->
     <div class="chat-panel" id="chat-panel">
       <div class="resize-handle" id="resize-handle"></div>
-      <div class="chat-hdr">💬 Chat <button id="settings-btn" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:14px">⚙️</button></div>
+      <div class="chat-hdr">💬 Chat
+        <div style="display:flex;gap:6px;align-items:center">
+          <button id="rpg-tog-btn" title="RPG Panel" style="background:rgba(153,51,255,.18);border:1px solid rgba(153,51,255,.45);border-radius:6px;color:#cc88ff;cursor:pointer;font-size:11px;padding:3px 9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.04em">⚔️ RPG</button>
+          <button id="settings-btn" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:14px">⚙️</button>
+        </div>
+      </div>
+      <!-- RPG Panel -->
+      <div class="rpg-panel" id="rpg-panel">
+        <div class="rpg-panel-title">⚔️ Your Character</div>
+        <div class="rpg-stats-grid" id="rpg-stats-grid">
+          <div class="rpg-stat-cell"><div class="rpg-stat-name">Class</div><div class="rpg-stat-val" id="rstat-class">—</div></div>
+          <div class="rpg-stat-cell"><div class="rpg-stat-name">HP</div><div class="rpg-stat-val" id="rstat-hp">—</div></div>
+          <div class="rpg-stat-cell"><div class="rpg-stat-name">ATK</div><div class="rpg-stat-val" id="rstat-atk">—</div></div>
+          <div class="rpg-stat-cell"><div class="rpg-stat-name">DEF</div><div class="rpg-stat-val" id="rstat-def">—</div></div>
+        </div>
+        <div class="rpg-hp-wrap" style="margin-bottom:8px">
+          <div class="rpg-hp-label">HP BAR</div>
+          <div class="rpg-hp-bar"><div class="rpg-hp-fill safe" id="rpg-mybar" style="width:100%"></div></div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:5px">Commands (type in chat):</div>
+        <div class="rpg-cmd-list">
+          <span class="rpg-cmd" data-cmd="/attack ">/attack @name</span>
+          <span class="rpg-cmd" data-cmd="/cast ">/cast &lt;spell&gt;</span>
+          <span class="rpg-cmd" data-cmd="/heal">/heal</span>
+          <span class="rpg-cmd" data-cmd="/stats">/stats</span>
+          <span class="rpg-cmd" data-cmd="/class ">/class &lt;name&gt;</span>
+          <span class="rpg-cmd" data-cmd="/revive">/revive</span>
+        </div>
+      </div>
       <div id="chat-msgs"></div>
       <div class="users-area"><div class="users-lbl">In room</div><div class="users-list" id="users-list"></div></div>
       <!-- Emoji picker -->
@@ -496,6 +560,8 @@ function go(roomId){
       var msg=s.val()||{};renderMsg(msg,msg.userId===myUID);
     });
     window._myRoom=roomId;window._myUID=myUID;
+    // Init RPG after FB connection
+    setTimeout(rpgInit,400);
   }
   if(window._fb)doFB();else window.addEventListener('firebase-ready',doFB,{once:true});
 
@@ -550,47 +616,386 @@ var drawOn=false,drawing=false,drawCol='#00ff9d',drawSz=4;
 function initDraw(){
   var canvas=document.getElementById('draw-canvas');
   var bar=document.getElementById('draw-bar');
+  var vwrap=document.getElementById('video-wrap');
   var ctx=canvas.getContext('2d');
-  function resize(){var v=document.getElementById('video-wrap');canvas.width=v.offsetWidth;canvas.height=v.offsetHeight;}
-  window.addEventListener('resize',resize);resize();
 
-  document.getElementById('vt-draw').addEventListener('click',function(){
-    drawOn=!drawOn;
-    canvas.classList.toggle('on',drawOn);bar.classList.toggle('on',drawOn);
-    document.getElementById('vt-draw').classList.toggle('on',drawOn);
-  });
+  // FIXED: defer resize until after layout paints, also re-run on window resize
+  function resize(){
+    // Preserve existing drawing by copying it
+    var tmp=null;
+    if(canvas.width>0&&canvas.height>0){
+      tmp=document.createElement('canvas');
+      tmp.width=canvas.width;tmp.height=canvas.height;
+      tmp.getContext('2d').drawImage(canvas,0,0);
+    }
+    canvas.width=vwrap.offsetWidth||vwrap.clientWidth||800;
+    canvas.height=vwrap.offsetHeight||vwrap.clientHeight||600;
+    // Restore drawing and keep background transparent
+    if(tmp&&tmp.width>0)ctx.drawImage(tmp,0,0);
+  }
+  // Fire resize after first paint
+  requestAnimationFrame(function(){requestAnimationFrame(function(){resize();});});
+  window.addEventListener('resize',function(){setTimeout(resize,50);});
+
+  function setDraw(on){
+    drawOn=on;
+    canvas.classList.toggle('on',on);
+    bar.classList.toggle('on',on);
+    // FIXED: block iframe pointer events so canvas receives mouse/touch
+    vwrap.classList.toggle('draw-active',on);
+    document.getElementById('vt-draw').classList.toggle('on',on);
+    if(on){resize();} // ensure canvas is correct size when activated
+  }
+
+  document.getElementById('vt-draw').addEventListener('click',function(){setDraw(!drawOn);});
+
   document.querySelectorAll('.dc-btn').forEach(function(b){
     b.addEventListener('click',function(){
       drawCol=b.dataset.col;
-      document.querySelectorAll('.dc-btn').forEach(function(x){x.classList.remove('sel');});b.classList.add('sel');
+      document.querySelectorAll('.dc-btn').forEach(function(x){x.classList.remove('sel');});
+      b.classList.add('sel');
       document.getElementById('draw-preview').style.background=drawCol;
     });
   });
   document.getElementById('draw-size').addEventListener('input',function(){drawSz=parseInt(this.value);});
-  document.getElementById('draw-clear').addEventListener('click',function(){ctx.clearRect(0,0,canvas.width,canvas.height);});
-
-  function pos(e){var r=canvas.getBoundingClientRect();var src=e.touches?e.touches[0]:e;return{x:src.clientX-r.left,y:src.clientY-r.top};}
-  canvas.addEventListener('mousedown',function(e){if(!drawOn)return;drawing=true;var p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);});
-  canvas.addEventListener('mousemove',function(e){
-    if(!drawing||!drawOn)return;var p=pos(e);
-    ctx.lineTo(p.x,p.y);ctx.strokeStyle=drawCol;ctx.lineWidth=drawSz;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+  document.getElementById('draw-clear').addEventListener('click',function(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
   });
-  canvas.addEventListener('mouseup',function(){drawing=false;});
-  canvas.addEventListener('mouseleave',function(){drawing=false;});
-  canvas.addEventListener('touchstart',function(e){e.preventDefault();if(!drawOn)return;drawing=true;var p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);},{passive:false});
-  canvas.addEventListener('touchmove',function(e){e.preventDefault();if(!drawing||!drawOn)return;var p=pos(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle=drawCol;ctx.lineWidth=drawSz;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();},{passive:false});
-  canvas.addEventListener('touchend',function(){drawing=false;});
+
+  function getPos(e){
+    var r=canvas.getBoundingClientRect();
+    var src=e.touches?e.touches[0]:e;
+    // Scale for any CSS vs actual pixel differences
+    var scaleX=canvas.width/r.width;
+    var scaleY=canvas.height/r.height;
+    return{x:(src.clientX-r.left)*scaleX,y:(src.clientY-r.top)*scaleY};
+  }
+
+  canvas.addEventListener('pointerdown',function(e){
+    if(!drawOn)return;
+    canvas.setPointerCapture(e.pointerId);
+    drawing=true;
+    var p=getPos(e);
+    ctx.beginPath();ctx.moveTo(p.x,p.y);
+    e.preventDefault();
+  });
+  canvas.addEventListener('pointermove',function(e){
+    if(!drawing||!drawOn)return;
+    var p=getPos(e);
+    ctx.lineTo(p.x,p.y);
+    ctx.strokeStyle=drawCol;ctx.lineWidth=drawSz;ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.stroke();
+    e.preventDefault();
+  });
+  canvas.addEventListener('pointerup',function(){drawing=false;});
+  canvas.addEventListener('pointercancel',function(){drawing=false;});
 
   document.getElementById('draw-post').addEventListener('click',function(){
     if(!window._fb||!myRoom)return;
-    var dataURL=canvas.toDataURL('image/png');
+    // Composite: white background + drawing so PNG isn't transparent
+    var exp=document.createElement('canvas');
+    exp.width=canvas.width;exp.height=canvas.height;
+    var ec=exp.getContext('2d');
+    ec.fillStyle='rgba(11,13,17,0.85)';
+    ec.fillRect(0,0,exp.width,exp.height);
+    ec.drawImage(canvas,0,0);
+    var dataURL=exp.toDataURL('image/jpeg',0.82); // jpeg smaller than png for chat
     window._fb.push(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/chat'),{
-      userId:myUID,name:myName,text:'🎨 Drawing',time:Date.now(),color:US.nameColor,isDraw:true,imgUrl:dataURL
+      userId:myUID,name:myName,text:'🎨 Drawing',time:Date.now(),
+      color:US.nameColor,isDraw:true,imgUrl:dataURL
     });
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    drawOn=false;canvas.classList.remove('on');bar.classList.remove('on');
-    document.getElementById('vt-draw').classList.remove('on');
+    setDraw(false);
   });
+}
+
+/* ══════════════════════════════════════════════════════
+   RPG SYSTEM
+══════════════════════════════════════════════════════ */
+var CLASSES={
+  warrior:{emoji:'⚔️',label:'Warrior',hp:120,maxHp:120,atk:22,def:12,color:'#ff6600',spells:['Cleave','Shield Bash','Battle Cry']},
+  mage:   {emoji:'🔮',label:'Mage',   hp:80, maxHp:80, atk:35,def:5, color:'#cc44ff',spells:['Fireball','Frost Nova','Arcane Blast']},
+  rogue:  {emoji:'🗡️',label:'Rogue',  hp:90, maxHp:90, atk:28,def:8, color:'#00ff9d',spells:['Backstab','Smoke Bomb','Poison Strike']},
+  paladin:{emoji:'🛡️',label:'Paladin',hp:110,maxHp:110,atk:18,def:18,color:'#ffcc00',spells:['Holy Smite','Divine Shield','Consecrate']},
+  ranger: {emoji:'🏹',label:'Ranger', hp:95, maxHp:95, atk:26,def:7, color:'#00aaff',spells:['Arrow Rain','Eagle Eye','Snare Shot']},
+  necro:  {emoji:'💀',label:'Necromancer',hp:75,maxHp:75,atk:38,def:4,color:'#88ff44',spells:['Soul Drain','Plague','Raise Dead']}
+};
+var CLASS_KEYS=Object.keys(CLASSES);
+// myRPG is local mirror of this user's stats
+var myRPG=null;
+
+function rpgInit(){
+  // Load or assign random class from localStorage per user-name
+  var saved=JSON.parse(localStorage.getItem('pr_rpg_'+myName)||'null');
+  if(saved&&CLASSES[saved.cls]){
+    myRPG=saved;
+  } else {
+    var cls=CLASS_KEYS[Math.floor(Math.random()*CLASS_KEYS.length)];
+    var base=CLASSES[cls];
+    myRPG={cls:cls,hp:base.hp,maxHp:base.maxHp,atk:base.atk,def:base.def};
+    rpgSaveLocal();
+  }
+  // Sync to Firebase so others can see it
+  rpgPushStats();
+  rpgUpdatePanel();
+
+  // Subscribe to RPG events in this room
+  if(window._fb&&myRoom){
+    window._fb.onChildAdded(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/rpg'),function(snap){
+      var ev=snap.val()||{};
+      renderRPGEvent(ev);
+      // If I'm the target, update my hp locally
+      if(ev.targetId===myUID&&ev.hpAfter!==undefined){
+        myRPG.hp=ev.hpAfter;
+        rpgSaveLocal();rpgUpdatePanel();
+      }
+    });
+  }
+
+  // RPG toggle panel
+  document.getElementById('rpg-tog-btn').addEventListener('click',function(){
+    var p=document.getElementById('rpg-panel');
+    p.classList.toggle('open');
+    this.style.background=p.classList.contains('open')?'rgba(153,51,255,.38)':'rgba(153,51,255,.18)';
+  });
+  // Quick-fill commands from panel
+  document.querySelectorAll('.rpg-cmd').forEach(function(b){
+    b.addEventListener('click',function(){
+      var inp=document.getElementById('chat-in');
+      inp.value=b.dataset.cmd;inp.focus();
+    });
+  });
+}
+
+function rpgSaveLocal(){
+  localStorage.setItem('pr_rpg_'+myName,JSON.stringify(myRPG));
+}
+function rpgPushStats(){
+  if(!window._fb||!myRoom||!myRPG)return;
+  window._fb.set(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/rpgChars/'+myUID),{
+    name:myName,cls:myRPG.cls,hp:myRPG.hp,maxHp:myRPG.maxHp,atk:myRPG.atk,def:myRPG.def,color:US.nameColor
+  });
+}
+function rpgUpdatePanel(){
+  if(!myRPG)return;
+  var base=CLASSES[myRPG.cls]||CLASSES.warrior;
+  document.getElementById('rstat-class').textContent=base.emoji+' '+base.label;
+  document.getElementById('rstat-hp').textContent=myRPG.hp+'/'+myRPG.maxHp;
+  document.getElementById('rstat-atk').textContent=myRPG.atk;
+  document.getElementById('rstat-def').textContent=myRPG.def;
+  var pct=Math.max(0,Math.min(100,Math.round(myRPG.hp/myRPG.maxHp*100)));
+  var bar=document.getElementById('rpg-mybar');
+  bar.style.width=pct+'%';
+  bar.className='rpg-hp-fill '+(pct>60?'safe':pct>30?'warn':'');
+}
+
+function rpgHandleCommand(txt){
+  // Returns true if it was an RPG command (suppress normal chat send)
+  var low=txt.trim().toLowerCase();
+  if(!low.startsWith('/'))return false;
+  var parts=txt.trim().split(/\s+/);
+  var cmd=parts[0].toLowerCase();
+
+  if(cmd==='/attack'){
+    var targetRaw=(parts[1]||'').replace('@','');
+    rpgDoAttack(targetRaw);return true;
+  }
+  if(cmd==='/cast'){
+    var spell=parts.slice(1).join(' ')||'Mystery Spell';
+    rpgDoCast(spell);return true;
+  }
+  if(cmd==='/heal'){rpgDoHeal();return true;}
+  if(cmd==='/stats'){rpgDoStats();return true;}
+  if(cmd==='/revive'){rpgDoRevive();return true;}
+  if(cmd==='/class'){
+    var clsName=(parts[1]||'').toLowerCase();
+    rpgChangeClass(clsName);return true;
+  }
+  return false;
+}
+
+function rpgFetchTarget(targetName,cb){
+  if(!window._fb||!myRoom){cb(null);return;}
+  window._fb.get(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/rpgChars')).then(function(snap){
+    var chars=snap.val()||{};
+    var found=null,foundId=null;
+    Object.keys(chars).forEach(function(uid){
+      var c=chars[uid];
+      if(c.name&&c.name.toLowerCase()===targetName.toLowerCase()){found=c;foundId=uid;}
+    });
+    cb(found,foundId);
+  }).catch(function(){cb(null);});
+}
+
+function rpgDoAttack(targetName){
+  if(!myRPG)return;
+  if(!targetName){sysMsg('Usage: /attack @name');return;}
+  rpgFetchTarget(targetName,function(target,targetId){
+    if(!target){sysMsg('⚠️ Player "'+targetName+'" not found in room.');return;}
+    if(target.hp<=0){sysMsg('💀 '+target.name+' is already defeated!');return;}
+    var myBase=CLASSES[myRPG.cls]||CLASSES.warrior;
+    var rawDmg=myRPG.atk+Math.floor(Math.random()*15)-5;
+    var dmg=Math.max(1,rawDmg-(target.def||0)+Math.floor(Math.random()*8));
+    var crit=Math.random()<0.15;
+    if(crit)dmg=Math.floor(dmg*1.8);
+    var hpAfter=Math.max(0,(target.hp||target.maxHp)-dmg);
+    var targetBase=CLASSES[target.cls]||CLASSES.warrior;
+    var flavors=['lands a devastating blow on','smashes into','unleashes fury upon','strikes with precision at','hammers down on'];
+    var flavor=myBase.emoji+' <strong>'+esc(myName)+'</strong> '+flavors[Math.floor(Math.random()*flavors.length)]+' '+targetBase.emoji+' <strong>'+esc(target.name)+'</strong>!';
+    if(crit)flavor+=' <span style="color:#ffcc00;text-shadow:0 0 6px #ffcc00">✨ CRITICAL HIT!</span>';
+    var ev={
+      type:'attack',actorId:myUID,actorName:myName,actorCls:myRPG.cls,actorColor:US.nameColor,
+      targetId:targetId,targetName:target.name,targetCls:target.cls,
+      dmg:dmg,crit:crit,hpAfter:hpAfter,hpMax:target.maxHp,flavor:flavor,time:Date.now()
+    };
+    window._fb.push(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/rpg'),ev);
+    // Update target HP in Firebase
+    window._fb.set(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/rpgChars/'+targetId+'/hp'),hpAfter);
+  });
+}
+
+function rpgDoCast(spell){
+  if(!myRPG)return;
+  var myBase=CLASSES[myRPG.cls]||CLASSES.warrior;
+  var spellEmojis={'fireball':'🔥','frost':'❄️','poison':'☠️','arcane':'💫','holy':'✨','shadow':'🌑','lightning':'⚡','earth':'🌍','wind':'🌪️','water':'🌊'};
+  var spellEm='🔮';
+  Object.keys(spellEmojis).forEach(function(k){if(spell.toLowerCase().includes(k))spellEm=spellEmojis[k];});
+  var mpCost=Math.floor(myRPG.atk*0.6)+Math.floor(Math.random()*10);
+  var ev={
+    type:'cast',actorId:myUID,actorName:myName,actorCls:myRPG.cls,actorColor:US.nameColor,
+    spell:spell,spellEm:spellEm,mpCost:mpCost,
+    flavor:myBase.emoji+' <strong>'+esc(myName)+'</strong> channels arcane energy and casts '+spellEm+' <strong>'+esc(spell)+'</strong>! The air crackles with power.',
+    time:Date.now()
+  };
+  window._fb.push(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/rpg'),ev);
+}
+
+function rpgDoHeal(){
+  if(!myRPG)return;
+  var myBase=CLASSES[myRPG.cls]||CLASSES.warrior;
+  var heal=Math.floor(myRPG.maxHp*0.25)+Math.floor(Math.random()*15);
+  var hpAfter=Math.min(myRPG.maxHp,myRPG.hp+heal);
+  myRPG.hp=hpAfter;rpgSaveLocal();rpgPushStats();rpgUpdatePanel();
+  var ev={
+    type:'heal',actorId:myUID,actorName:myName,actorCls:myRPG.cls,actorColor:US.nameColor,
+    heal:heal,hpAfter:hpAfter,hpMax:myRPG.maxHp,
+    flavor:myBase.emoji+' <strong>'+esc(myName)+'</strong> takes a deep breath and channels healing energy. ❤️ Restored <strong>'+heal+'</strong> HP!',
+    time:Date.now()
+  };
+  window._fb.push(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/rpg'),ev);
+}
+
+function rpgDoStats(){
+  if(!myRPG)return;
+  var base=CLASSES[myRPG.cls]||CLASSES.warrior;
+  var ev={
+    type:'stats',actorId:myUID,actorName:myName,actorCls:myRPG.cls,actorColor:US.nameColor,
+    hp:myRPG.hp,maxHp:myRPG.maxHp,atk:myRPG.atk,def:myRPG.def,
+    flavor:base.emoji+' <strong>'+esc(myName)+'</strong> inspects their equipment and checks their vitals.',
+    time:Date.now()
+  };
+  window._fb.push(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/rpg'),ev);
+}
+
+function rpgDoRevive(){
+  if(!myRPG)return;
+  var myBase=CLASSES[myRPG.cls]||CLASSES.warrior;
+  myRPG.hp=Math.floor(myRPG.maxHp*0.4);rpgSaveLocal();rpgPushStats();rpgUpdatePanel();
+  var ev={
+    type:'revive',actorId:myUID,actorName:myName,actorCls:myRPG.cls,actorColor:US.nameColor,
+    hp:myRPG.hp,maxHp:myRPG.maxHp,
+    flavor:'✨ <strong>'+esc(myName)+'</strong> rises from the ashes! '+myBase.emoji+' The '+myBase.label+' refuses to fall!',
+    time:Date.now()
+  };
+  window._fb.push(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/rpg'),ev);
+}
+
+function rpgChangeClass(clsName){
+  var match=null;
+  CLASS_KEYS.forEach(function(k){
+    if(k===clsName||CLASSES[k].label.toLowerCase()===clsName)match=k;
+  });
+  if(!match){
+    sysMsg('⚠️ Unknown class. Try: '+CLASS_KEYS.join(', '));return;
+  }
+  var base=CLASSES[match];
+  myRPG={cls:match,hp:base.hp,maxHp:base.maxHp,atk:base.atk,def:base.def};
+  rpgSaveLocal();rpgPushStats();rpgUpdatePanel();
+  var ev={
+    type:'classchange',actorId:myUID,actorName:myName,actorCls:match,actorColor:US.nameColor,
+    flavor:'🌟 <strong>'+esc(myName)+'</strong> has reborn as a '+base.emoji+' <strong>'+base.label+'</strong>! Stats reset.',
+    time:Date.now()
+  };
+  window._fb.push(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/rpg'),ev);
+}
+
+function renderRPGEvent(ev){
+  var c=document.getElementById('chat-msgs');
+  var t=new Date(ev.time||Date.now()).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  var isSelf=ev.actorId===myUID;
+  var actorBase=CLASSES[ev.actorCls]||CLASSES.warrior;
+  var col=ev.actorColor||actorBase.color||'#cc44ff';
+  var div=document.createElement('div');
+  div.className='msg rpg';
+  div.style.setProperty('--rpg-col',col);
+
+  var inner='<div class="rpg-header">';
+  inner+='<span class="rpg-actor" style="--rpg-col:'+col+'">'+actorBase.emoji+'</span>';
+
+  if(ev.type==='attack'){
+    var tBase=CLASSES[ev.targetCls]||CLASSES.warrior;
+    inner+='<span class="rpg-vs">⚔️</span><span class="rpg-target">'+tBase.emoji+'</span>';
+    inner+='<span class="rpg-action-label" style="color:'+col+'">ATTACK</span>';
+  } else if(ev.type==='cast'){
+    inner+='<span class="rpg-action-label" style="color:#cc44ff">'+ev.spellEm+' SPELL</span>';
+  } else if(ev.type==='heal'){
+    inner+='<span class="rpg-action-label" style="color:#00ff9d">💚 HEAL</span>';
+  } else if(ev.type==='stats'){
+    inner+='<span class="rpg-action-label" style="color:#00aaff">📊 STATS</span>';
+  } else if(ev.type==='revive'){
+    inner+='<span class="rpg-action-label" style="color:#ffcc00">⭐ REVIVE</span>';
+  } else if(ev.type==='classchange'){
+    inner+='<span class="rpg-action-label" style="color:#ffcc00">🌟 CLASS</span>';
+  }
+  inner+='<span class="msg-time" style="margin-left:8px">'+t+'</span>';
+  inner+='</div>';
+  inner+='<div class="rpg-flavor">'+( ev.flavor||'' )+'</div>';
+  inner+='<div class="rpg-stat-row">';
+
+  if(ev.type==='attack'){
+    inner+='<span class="rpg-dmg">-'+ev.dmg+' HP</span>';
+    if(ev.hpAfter!==undefined){
+      var pct=Math.max(0,Math.round(ev.hpAfter/(ev.hpMax||100)*100));
+      var barCls=pct>60?'safe':pct>30?'warn':'';
+      inner+='<div class="rpg-hp-wrap"><div class="rpg-hp-label">'+esc(ev.targetName||'?')+' HP: '+ev.hpAfter+'/'+ev.hpMax+'</div><div class="rpg-hp-bar"><div class="rpg-hp-fill '+barCls+'" style="width:'+pct+'%"></div></div></div>';
+    }
+    if(ev.hpAfter===0)inner+='<span style="font-size:11px;color:#ff4466;font-weight:700">💀 DEFEATED</span>';
+  } else if(ev.type==='heal'){
+    inner+='<span class="rpg-heal-val">+'+ev.heal+' HP</span>';
+    if(ev.hpAfter!==undefined){
+      var hpct=Math.max(0,Math.round(ev.hpAfter/(ev.hpMax||100)*100));
+      var hbarCls=hpct>60?'safe':hpct>30?'warn':'';
+      inner+='<div class="rpg-hp-wrap"><div class="rpg-hp-label">'+esc(ev.actorName||'?')+' HP: '+ev.hpAfter+'/'+ev.hpMax+'</div><div class="rpg-hp-bar"><div class="rpg-hp-fill '+hbarCls+'" style="width:'+hpct+'%"></div></div></div>';
+    }
+  } else if(ev.type==='cast'){
+    inner+='<span class="rpg-class-badge">'+ev.spellEm+' '+esc(ev.spell)+'</span>';
+    inner+='<span style="font-size:11px;color:#cc44ff;font-family:\'DM Mono\',monospace">Cost: '+ev.mpCost+' MP</span>';
+  } else if(ev.type==='stats'){
+    inner+='<span class="rpg-class-badge">'+actorBase.emoji+' '+actorBase.label+'</span>';
+    inner+='<span style="font-size:11px;color:rgba(255,255,255,.7);font-family:\'DM Mono\',monospace">HP:'+ev.hp+'/'+ev.maxHp+' ATK:'+ev.atk+' DEF:'+ev.def+'</span>';
+    if(ev.hp!==undefined){
+      var spct=Math.max(0,Math.round(ev.hp/(ev.maxHp||100)*100));
+      var sbarCls=spct>60?'safe':spct>30?'warn':'';
+      inner+='<div class="rpg-hp-wrap"><div class="rpg-hp-bar"><div class="rpg-hp-fill '+sbarCls+'" style="width:'+spct+'%"></div></div></div>';
+    }
+  } else if(ev.type==='revive'){
+    inner+='<span class="rpg-class-badge">'+actorBase.emoji+' '+actorBase.label+'</span>';
+    inner+='<span style="font-size:11px;color:#ffcc00;font-family:\'DM Mono\',monospace">HP: '+ev.hp+'/'+ev.maxHp+'</span>';
+  }
+  inner+='</div>';
+  div.innerHTML=inner;
+  c.appendChild(div);c.scrollTop=c.scrollHeight;
+  if(!firstLoad)bloop(isSelf);
 }
 
 /* ── Emoji picker ── */
@@ -698,6 +1103,8 @@ function sysMsg(txt){var c=document.getElementById('chat-msgs'),d=document.creat
 function sendChat(){
   var inp=document.getElementById('chat-in'),txt=inp.value.trim();
   if(!txt||!window._fb)return;
+  // Check for RPG commands first
+  if(rpgHandleCommand(txt)){inp.value='';return;}
   firstLoad=false;
   var isImg=IMG_RE.test(txt);
   window._fb.push(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/chat'),{userId:myUID,name:myName,text:txt,time:Date.now(),color:US.nameColor,isImage:isImg});
