@@ -122,6 +122,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 .vt{display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Syne',sans-serif;font-size:11px;font-weight:600;padding:5px 10px;cursor:pointer;white-space:nowrap;transition:all .15s;letter-spacing:.03em}
 .vt:hover{background:var(--border);border-color:var(--accent);color:var(--accent)}
 .vt.on{background:rgba(0,229,160,.15);border-color:var(--accent);color:var(--accent)}
+/* Flashlight mode */
+.vid-toolbar.flashlight{background:rgba(255,255,255,.97)!important;box-shadow:0 0 60px #fff,0 0 120px rgba(255,255,255,.8),0 8px 40px rgba(255,255,255,.6)!important;border-color:rgba(255,255,255,.5)!important;transition:all .3s}
+.vid-toolbar.flashlight .vt{color:#1a1a1a!important;background:rgba(0,0,0,.07)!important;border-color:rgba(0,0,0,.18)!important}
+.vid-toolbar.flashlight .vt.on{background:rgba(0,160,100,.2)!important;color:#005533!important;border-color:#005533!important}
+.vid-toolbar.flashlight .vt.red{color:#cc0000!important;background:rgba(200,0,0,.1)!important;border-color:#cc0000!important}
+.vid-toolbar.flashlight #vt-flash{background:rgba(255,220,0,.3)!important;border-color:#bb8800!important;color:#664400!important;font-weight:800}
+/* Collapsed toolbar */
+.vid-toolbar.collapsed{height:0!important;min-height:0!important;padding-top:0!important;padding-bottom:0!important;overflow:hidden!important;border:none!important}
+.vid-toolbar-wrap{position:relative;flex-shrink:0}
+.toolbar-collapse-btn{display:block;width:100%;text-align:center;background:rgba(0,0,0,.5);border:none;border-bottom:1px solid rgba(255,255,255,.08);padding:3px 0;cursor:pointer;color:var(--muted);font-size:9px;font-family:'DM Mono',monospace;letter-spacing:.08em;transition:all .2s}
+.toolbar-collapse-btn:hover{color:var(--accent);background:rgba(0,229,160,.08)}
 .vt.red{border-color:var(--danger);color:var(--danger)}
 .vt.red:hover{background:rgba(255,68,102,.15)}
 .vt svg{width:13px;height:13px;flex-shrink:0}
@@ -374,7 +385,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
       <div class="hdr-clock" id="clk-app"></div>
     </div>
   </header>
-  <div class="vid-toolbar">
+  <div class="vid-toolbar-wrap" id="toolbar-wrap">
+  <div class="vid-toolbar" id="vid-toolbar">
     <button class="vt on" id="vt-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>Grid</button>
     <button class="vt" id="vt-focus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="15" height="13" rx="2"/><rect x="19" y="5" width="3" height="4" rx="1"/><rect x="19" y="11" width="3" height="4" rx="1"/></svg>Focus</button>
     <div class="vt-sep"></div>
@@ -386,12 +398,38 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
     <div class="vt-sep"></div>
     <button class="vt" id="vt-fs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>Fullscreen</button>
     <button class="vt red vt-right" id="vt-leave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Leave</button>
+    <div class="vt-sep"></div>
+    <button class="vt" id="vt-game">🎮 Game</button>
+    <div class="vt-sep"></div>
+    <button class="vt" id="vt-flash" title="Flashlight mode">🔦 Flash</button>
+  </div>
+  <button class="toolbar-collapse-btn" id="toolbar-collapse-btn">▲ collapse toolbar</button>
   </div>
   <div class="main-layout" id="main-layout">
     <div class="video-wrap" id="video-wrap">
       <div id="jaas-container"></div>
       <canvas id="draw-canvas"></canvas>
       <div id="sticker-layer"></div>
+      <!-- GAME PANEL -->
+      <div id="game-panel" style="display:none;position:absolute;inset:0;z-index:28;background:#050810;flex-direction:column">
+        <div id="game-header" style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid rgba(0,229,160,.2);background:rgba(0,0,0,.6);flex-shrink:0">
+          <span style="font-size:16px">🎮</span>
+          <div id="game-tabs" style="display:flex;gap:4px"></div>
+          <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+            <span id="game-status" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--muted)">Select a game</span>
+            <button id="game-start-btn" style="background:rgba(0,229,160,.18);border:1px solid var(--accent);border-radius:7px;color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;font-size:11px;padding:4px 12px;cursor:pointer;display:none">▶ Start</button>
+            <button id="game-close-btn" style="background:rgba(255,68,102,.12);border:1px solid rgba(255,68,102,.4);border-radius:7px;color:#ff4466;font-size:12px;padding:3px 10px;cursor:pointer">✕ Close</button>
+          </div>
+        </div>
+        <div id="game-canvas-wrap" style="flex:1;position:relative;display:flex;align-items:center;justify-content:center">
+          <canvas id="game-canvas" style="display:block;image-rendering:pixelated"></canvas>
+          <div id="game-overlay" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,8,16,.88);pointer-events:none">
+            <div id="game-overlay-title" style="font-size:28px;font-weight:800;font-family:'Syne',sans-serif;color:var(--accent);text-shadow:0 0 20px var(--accent);margin-bottom:8px">🎮 PeerRoom Games</div>
+            <div id="game-overlay-sub" style="font-size:13px;color:var(--muted);font-family:'DM Mono',monospace">Choose a game above · WASD or Arrow keys to play</div>
+          </div>
+        </div>
+        <div id="game-scoreboard" style="padding:6px 14px;border-top:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.5);display:flex;gap:8px;overflow-x:auto;flex-shrink:0;min-height:36px;align-items:center"></div>
+      </div>
       <div id="vol-overlay"></div>
       <div class="draw-bar" id="draw-bar">
         <span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">Color:</span>
@@ -555,6 +593,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
         <tr><td>/lenny</td><td>( ͡° ͜ʖ ͡°)</td></tr>
         <tr><td>/wave · /dance · /rip</td><td>Quick emote actions</td></tr>
         <tr><td>/420 · /gg · /pog · /ez</td><td>Fun quick messages</td></tr>
+        <tr><th colspan="2" style="color:#00e5a0;padding:8px 0 4px">🎮 Games</th></tr>
+        <tr><td>🎮 Game</td><td>Toolbar → 🎮 Game · Choose Dot Tag or Snake · WASD/Arrows to play</td></tr>
         <tr><th colspan="2" style="color:#00aaff;padding:8px 0 4px">🤖 AI Bot</th></tr>
         <tr><td>@bot &lt;message&gt;</td><td>Chat with PeerBot AI (everyone sees reply)</td></tr>
         <tr><td>/bot &lt;message&gt;</td><td>Same as @bot</td></tr>
@@ -809,10 +849,27 @@ function go(roomId){
   document.getElementById('app').classList.add('visible');
   function doFB(){
     var fb=window._fb;
-    var col=US.randColor?'#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0'):US.nameColor;
+    // Pick color — random or user-chosen
+    var col=US.randColor?rC():US.nameColor;
     var uRef=fb.ref(fb.db,'rooms/'+roomId+'/users/'+myUID);
-    fb.set(uRef,{name:myName,joined:Date.now(),color:col,hasCamera:false,hasScreen:false});
+    fb.set(uRef,{name:myName,joined:Date.now(),ts:Date.now(),color:col,hasCamera:false,hasScreen:false});
     fb.onDisconnect(uRef).remove();
+    // Heartbeat every 45s so we can detect stale users (crashed tabs)
+    setInterval(function(){
+      if(window._fb&&window._myRoom)
+        fb.set(fb.ref(fb.db,'rooms/'+roomId+'/users/'+myUID+'/ts'),Date.now());
+    },45000);
+    // Clean stale users (ts older than 5 min) — run once on join
+    fb.get(fb.ref(fb.db,'rooms/'+roomId+'/users')).then(function(snap){
+      var now=Date.now();var ud=snap.val()||{};
+      Object.keys(ud).forEach(function(k){
+        var u=ud[k];
+        if(k!==myUID&&u.ts&&(now-u.ts)>300000){
+          // Stale — remove silently
+          fb.remove(fb.ref(fb.db,'rooms/'+roomId+'/users/'+k));
+        }
+      });
+    }).catch(function(){});
     // Broadcast join
     fb.push(fb.ref(fb.db,'rooms/'+roomId+'/events'),{type:'join',name:myName,ts:Date.now()});
     // Clean up leave on disconnect
@@ -824,6 +881,11 @@ function go(roomId){
     }
     var pRef=fb.ref(fb.db,'presence/'+myUID);
     fb.set(pRef,{name:myName,room:roomId,ts:Date.now()});fb.onDisconnect(pRef).remove();
+    // Clean stale presence entries
+    fb.get(fb.ref(fb.db,'presence')).then(function(snap){
+      var now=Date.now();var pd=snap.val()||{};
+      Object.keys(pd).forEach(function(k){if(k!==myUID&&pd[k].ts&&(now-pd[k].ts)>300000)fb.remove(fb.ref(fb.db,'presence/'+k));});
+    }).catch(function(){});
     fb.onValue(fb.ref(fb.db,'rooms/'+roomId+'/users'),function(s){buildUserList(s.val()||{});});
     fb.onChildAdded(fb.ref(fb.db,'rooms/'+roomId+'/chat'),function(s){
       var msg=s.val()||{};renderMsg(msg,msg.userId===myUID);
@@ -945,6 +1007,22 @@ function initVidToolbar(){
     }
     if(jaasAPI)jaasAPI.dispose();
     location.reload();
+  });
+  // Flashlight
+  var flashOn=false;
+  document.getElementById('vt-flash').addEventListener('click',function(){
+    flashOn=!flashOn;
+    var tb=document.getElementById('vid-toolbar');
+    tb.classList.toggle('flashlight',flashOn);
+    this.classList.toggle('on',flashOn);
+    this.textContent=flashOn?'💡 Flash ON':'🔦 Flash';
+  });
+  // Collapse toolbar
+  var tbCollapsed=false;
+  document.getElementById('toolbar-collapse-btn').addEventListener('click',function(){
+    tbCollapsed=!tbCollapsed;
+    document.getElementById('vid-toolbar').classList.toggle('collapsed',tbCollapsed);
+    this.textContent=tbCollapsed?'▼ show toolbar':'▲ collapse toolbar';
   });
 }
 
@@ -1095,21 +1173,33 @@ function initRadio(){
   }
 
   function playStation(st,nowEl,stopBtn){
-    audioEl.pause();audioEl.src='';
-    audioEl.crossOrigin='anonymous';
-    audioEl.src=st.url;
+    audioEl.pause();
+    // Remove crossOrigin attr — many Icecast streams don't send CORS headers
+    // and setting crossOrigin='anonymous' will *block* them
+    audioEl.removeAttribute('crossorigin');
+    audioEl.src='';
     audioEl.volume=parseFloat(volSlider.value);
     audioEl.muted=!!(US.muteAll||US.muteRadio);
-    var playPromise=audioEl.play();
-    if(playPromise!==undefined){
-      playPromise.then(function(){
-        nowEl.innerHTML='<span style="color:var(--accent)">▶</span> '+esc(st.name)+' <span style="color:var(--muted);font-size:10px">'+esc(st.genre)+'</span>';
-        stopBtn.style.display='';
-      }).catch(function(e){
-        nowEl.textContent='⚠ Stream unavailable — try another station';
-        console.warn('Radio error:',e,st.url);
-      });
-    }
+    nowEl.innerHTML='<span style="color:#ffcc00">⏳</span> Connecting to '+esc(st.name)+'…';
+    stopBtn.style.display='';
+    // Small delay so the browser releases the old src
+    setTimeout(function(){
+      audioEl.src=st.url;
+      audioEl.load();
+      var playPromise=audioEl.play();
+      if(playPromise!==undefined){
+        playPromise.then(function(){
+          nowEl.innerHTML='<span style="color:var(--accent)">♫</span> <strong>'+esc(st.name)+'</strong> <span style="color:var(--muted);font-size:10px">'+esc(st.genre)+'</span>';
+        }).catch(function(err){
+          console.warn('Radio direct fail:',err,st.url);
+          // Try without any crossOrigin constraint already removed above
+          nowEl.innerHTML='<span style="color:#ff4466">⚠</span> '+esc(st.name)+' — blocked by browser. Try another!';
+          stopBtn.style.display='none';
+          radioPlaying=null;
+          document.querySelectorAll('.radio-st').forEach(function(b){b.classList.remove('playing');});
+        });
+      }
+    },80);
   }
 
   searchEl.addEventListener('input',function(){renderStations(activeGenre,this.value);});
@@ -1211,7 +1301,15 @@ function renderMsg(msg,isSelf){
     div.innerHTML='<div class="msg-meta"><span class="msg-name" style="color:#00aaff">'+esc(msg.name||'PeerBot')+'</span><span class="msg-time">'+t+'</span></div><div class="msg-text">'+esc(msg.text||'')+'</div>';
   }else{
     div.className=cls;
-    div.innerHTML='<div class="msg-meta"><span class="msg-name" style="color:'+esc(msg.color||'#fff')+'">'+esc(msg.name||'?')+'</span><span class="msg-time">'+t+'</span></div><div class="msg-text">'+esc(msg.text||'')+'</div>';
+    // Dynamic neon bubble color per user
+    var bc=msg.color||'#00ff9d';
+    var bc2=shiftHue(bc,45);
+    if(!isSelf){
+      div.style.background='linear-gradient(135deg,'+hexA(bc,0.55)+','+hexA(bc2,0.4)+')';
+      div.style.borderColor=bc;
+      div.style.boxShadow='0 0 8px '+hexA(bc,0.7)+',0 0 16px '+hexA(bc,0.35);
+    }
+    div.innerHTML='<div class="msg-meta"><span class="msg-name" style="color:'+esc(bc)+';text-shadow:0 0 6px '+esc(bc)+'">'+esc(msg.name||'?')+'</span><span class="msg-time">'+t+'</span></div><div class="msg-text">'+esc(msg.text||'')+'</div>';
   }
   div.querySelectorAll('.msg-img').forEach(function(img){img.addEventListener('click',function(){document.getElementById('lb-img').src=img.src;document.getElementById('lightbox').classList.add('open');});img.addEventListener('error',function(){img.style.display='none';});});
   c.appendChild(div);c.scrollTop=c.scrollHeight;
@@ -1311,11 +1409,26 @@ function fetchWeather(query){
 /* ══ USER LIST ══ */
 function buildUserList(ud){
   var list=document.getElementById('users-list');list.innerHTML='';
-  Object.keys(ud).forEach(function(k){
-    var u=ud[k],p=document.createElement('div');
-    p.className='upill'+(u.name===myName?' me':'');p.style.color=u.color||'#fff';p.textContent=u.name;
+  var keys=Object.keys(ud);
+  if(!keys.length){list.innerHTML='<span style="font-size:11px;color:var(--muted)">No one else here yet</span>';return;}
+  keys.forEach(function(k){
+    var u=ud[k],isMe=(k===myUID||u.name===myName);
+    var p=document.createElement('div');
+    p.className='upill'+(isMe?' me':'');
+    var col=u.color||'#00ff9d';
+    p.style.color=col;
+    p.style.borderColor=hexA(col,0.5);
+    p.style.boxShadow='0 0 8px '+hexA(col,0.3);
+    var camIcon=u.hasCamera?'<span title="Camera on" style="font-size:9px;opacity:.8">📷</span>':'';
+    var scrIcon=u.hasScreen?'<span title="Screensharing" style="font-size:9px;opacity:.8">🖥</span>':'';
+    var meTag=isMe?'<span style="font-size:9px;opacity:.6;margin-left:2px">(you)</span>':'';
+    p.innerHTML='<span style="font-size:11px;font-weight:700">'+esc(u.name)+'</span>'+camIcon+scrIcon+meTag;
+    p.title=u.name+(isMe?' — You':'')+' · joined '+(u.joined?new Date(u.joined).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'?');
     list.appendChild(p);
   });
+  // Update the label count
+  var lbl=document.querySelector('.users-lbl');
+  if(lbl)lbl.textContent='In room ('+keys.length+')';
 }
 
 /* ══ RESIZE ══ */
@@ -1424,40 +1537,44 @@ function renderRPGEvent(ev){
 
 
 /* ══ AI BOT ══ */
-// @bot or /bot triggers Claude Haiku via Anthropic API in artifact mode
+// @bot or /bot — uses Pollinations AI (free, no key, CORS-enabled)
 var BOT_HISTORY=[];
 var BOT_NAME='PeerBot🤖';
 var botTyping=false;
+var BOT_SYSTEM='You are PeerBot, a fun helpful assistant inside PeerRoom — an instant video chat app. Be casual, short, and friendly. Use occasional emojis. You know these commands: /attack @name, /cast spell, /heal, /roll, /stats, /me action, !weather city, @bot message. Tip: reply in under 3 sentences unless a longer answer is truly needed.';
 
 function handleBotMessage(userText){
   if(botTyping)return;
   botTyping=true;
-  // Show typing indicator
   var typingDiv=document.createElement('div');
   typingDiv.className='sys-msg';typingDiv.id='bot-typing';
-  typingDiv.textContent=BOT_NAME+' is thinking…';
+  typingDiv.innerHTML='🤖 <em>PeerBot is thinking…</em>';
   var c=document.getElementById('chat-msgs');
   c.appendChild(typingDiv);c.scrollTop=c.scrollHeight;
 
-  // Keep last 8 exchanges for context
   BOT_HISTORY.push({role:'user',content:userText});
-  if(BOT_HISTORY.length>16)BOT_HISTORY=BOT_HISTORY.slice(-16);
+  if(BOT_HISTORY.length>12)BOT_HISTORY=BOT_HISTORY.slice(-12);
 
-  fetch('https://api.anthropic.com/v1/messages',{
+  // Build messages array with system injected as first user/assistant pair
+  var msgs=[{role:'system',content:BOT_SYSTEM}].concat(BOT_HISTORY);
+
+  // Pollinations AI — free, no API key, CORS-enabled
+  fetch('https://text.pollinations.ai/openai',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
-      model:'claude-haiku-4-5-20251001',
-      max_tokens:400,
-      system:'You are PeerBot, a fun and helpful assistant living inside PeerRoom, an instant video chat app. You are always ready to chat, answer questions, tell jokes, play word games, give quick facts, or help users. Keep replies short, casual, and friendly. Use occasional emojis. You know about the room commands: /attack, /cast, /heal, /roll, /me, !weather, and the radio player. When someone asks about the app just give quick tips.',
-      messages:BOT_HISTORY
+      model:'openai',
+      messages:msgs,
+      max_tokens:300,
+      private:true
     })
-  }).then(function(r){return r.json();}).then(function(data){
-    var reply=(data.content&&data.content[0]&&data.content[0].text)||'Beep boop — I seem to be glitching! Try again 🤖';
+  }).then(function(r){
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return r.json();
+  }).then(function(data){
+    var reply=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'Beep boop… 🤖 glitch! Try again.';
     BOT_HISTORY.push({role:'assistant',content:reply});
-    // Remove typing indicator
     var td=document.getElementById('bot-typing');if(td)td.remove();
-    // Push bot message to Firebase so everyone sees it
     if(window._fb&&myRoom){
       window._fb.push(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/chat'),{
         userId:'bot-'+myUID,name:BOT_NAME,text:reply,time:Date.now(),
@@ -1466,10 +1583,475 @@ function handleBotMessage(userText){
     }
     botTyping=false;
   }).catch(function(e){
+    console.warn('PeerBot error:',e);
     var td=document.getElementById('bot-typing');if(td)td.remove();
-    sysMsg('🤖 PeerBot is offline right now. Try again later!');
+    // Fallback: fun offline responses
+    var fallbacks=[
+      '🤖 My circuits are buzzing — try again in a sec!',
+      '💤 I dozed off... What did you say?',
+      '📡 Signal lost! Retrying next time.',
+      '🔧 Maintenance mode engaged. Back soon!'
+    ];
+    var reply=fallbacks[Math.floor(Math.random()*fallbacks.length)];
+    if(window._fb&&myRoom){
+      window._fb.push(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/chat'),{
+        userId:'bot-'+myUID,name:BOT_NAME,text:reply,time:Date.now(),
+        color:'#00aaff',isBot:true
+      });
+    }
     botTyping=false;
   });
+}
+
+
+/* ══════════════════════════════════════════════════════
+   GAMES — Dot Tag Arena + Multi Snake
+   Firebase path: rooms/{roomId}/game/{gameType}/{uid}
+   ══════════════════════════════════════════════════════ */
+
+var GAME_ACTIVE=false;
+var CURRENT_GAME=null; // 'tag' | 'snake'
+var gameLoop=null;
+var gameUnsubscribers=[];
+var myGameColor='#00ff9d';
+var NEON=['#00ff9d','#ff4466','#00aaff','#ffcc00','#cc44ff','#ff6600','#00ffff','#ff3399','#7fff00','#ff00ff'];
+
+// ── GAME INIT ──────────────────────────────────────────
+function initGames(){
+  var panel=document.getElementById('game-panel');
+  var canvas=document.getElementById('game-canvas');
+  var startBtn=document.getElementById('game-start-btn');
+  var closeBtn=document.getElementById('game-close-btn');
+  var tabsEl=document.getElementById('game-tabs');
+
+  // Color assigned fresh when game actually starts (myUID set by then)
+  // myGameColor assigned at startTagGame/startSnakeGame time
+
+  // Game tabs
+  var games=[{id:'tag',label:'🔴 Dot Tag'},{id:'snake',label:'🐍 Snake'}];
+  games.forEach(function(g){
+    var t=document.createElement('button');
+    t.style.cssText='background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:6px;color:var(--muted);font-family:"Syne",sans-serif;font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer;transition:all .15s';
+    t.textContent=g.label;
+    t.addEventListener('click',function(){
+      document.querySelectorAll('#game-tabs button').forEach(function(b){
+        b.style.background='rgba(255,255,255,.06)';b.style.color='var(--muted)';b.style.borderColor='rgba(255,255,255,.12)';
+      });
+      t.style.background='rgba(0,229,160,.18)';t.style.color='var(--accent)';t.style.borderColor='var(--accent)';
+      CURRENT_GAME=g.id;
+      startBtn.style.display='';
+      document.getElementById('game-status').textContent='Press Start to join — WASD/Arrows to move';
+      stopGameLoop();
+      showGameOverlay(g.label+' — press Start');
+    });
+    tabsEl.appendChild(t);
+  });
+
+  document.getElementById('vt-game').addEventListener('click',function(){
+    var on=panel.style.display!=='flex';
+    panel.style.display=on?'flex':'none';
+    this.classList.toggle('on',on);
+    if(!on)stopGameLoop();
+    else resizeCanvas();
+  });
+
+  closeBtn.addEventListener('click',function(){
+    panel.style.display='none';
+    document.getElementById('vt-game').classList.remove('on');
+    stopGameLoop();
+    leaveGame();
+  });
+
+  startBtn.addEventListener('click',function(){
+    if(!CURRENT_GAME)return;
+    hideGameOverlay();
+    GAME_ACTIVE=true;
+    if(CURRENT_GAME==='tag')startTagGame();
+    else if(CURRENT_GAME==='snake')startSnakeGame();
+  });
+
+  window.addEventListener('resize',resizeCanvas);
+  resizeCanvas();
+}
+
+function simpleHash(s){var h=0;for(var i=0;i<s.length;i++)h=(Math.imul(31,h)+s.charCodeAt(i))|0;return h;}
+
+function resizeCanvas(){
+  var wrap=document.getElementById('game-canvas-wrap');
+  var c=document.getElementById('game-canvas');
+  if(!wrap||!c)return;
+  var W=wrap.clientWidth||600,H=wrap.clientHeight||400;
+  c.width=W;c.height=H;
+}
+
+function showGameOverlay(msg){
+  var ov=document.getElementById('game-overlay');
+  var sub=document.getElementById('game-overlay-sub');
+  ov.style.display='flex';ov.style.pointerEvents='none';
+  sub.textContent=msg||'';
+}
+function hideGameOverlay(){
+  var ov=document.getElementById('game-overlay');
+  ov.style.display='none';
+}
+
+function stopGameLoop(){
+  GAME_ACTIVE=false;
+  if(gameLoop)clearInterval(gameLoop);
+  gameLoop=null;
+  gameUnsubscribers.forEach(function(fn){try{fn();}catch(e){}});
+  gameUnsubscribers=[];
+}
+
+function leaveGame(){
+  if(!window._fb||!myRoom||!myUID)return;
+  window._fb.remove(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/game/tag/'+myUID));
+  window._fb.remove(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/game/snake/'+myUID));
+}
+
+function updateScoreboard(players){
+  var sb=document.getElementById('game-scoreboard');
+  sb.innerHTML='';
+  var sorted=Object.values(players).sort(function(a,b){return (b.score||b.size||0)-(a.score||a.size||0);});
+  sorted.forEach(function(p){
+    var el=document.createElement('div');
+    el.style.cssText='display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:12px;background:'+hexA(p.color||'#fff',0.12)+';border:1px solid '+hexA(p.color||'#fff',0.3)+';font-size:11px;font-family:"Syne",sans-serif;font-weight:700;color:'+(p.color||'#fff')+';white-space:nowrap';
+    var score=p.score!==undefined?p.score:(p.size||0);
+    el.innerHTML='<span style="font-size:8px;color:'+hexA(p.color||'#fff',0.6)+'">●</span>'+esc(p.name||'?')+' <span style="font-family:\'DM Mono\',monospace;font-size:10px;opacity:.8">'+score+'</span>';
+    sb.appendChild(el);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   DOT TAG ARENA
+   ─ Players = glowing colored dots
+   ─ WASD/Arrows to move
+   ─ Tag (overlap) = tagger grows, tagged shrinks
+   ─ Eat food pellets to grow
+   ─ Sync to Firebase every 80ms
+   ═══════════════════════════════════════════ */
+
+var TAG_FOOD=[];
+var TAG_PLAYERS={};
+var myTag={x:200,y:200,size:12,score:0,vel:{x:0,y:0},it:false};
+var TAG_W=600,TAG_H=400;
+var tagKeys={};
+
+function startTagGame(){
+  if(!window._fb||!myRoom)return;
+  myGameColor=NEON[Math.abs(simpleHash(myUID||'x'))%NEON.length];
+  var canvas=document.getElementById('game-canvas');
+  TAG_W=canvas.width;TAG_H=canvas.height;
+
+  // Init my dot
+  myTag={x:Math.random()*TAG_W*0.8+TAG_W*0.1,y:Math.random()*TAG_H*0.8+TAG_H*0.1,size:12,score:0,vel:{x:0,y:0},it:Math.random()<0.3};
+
+  // Spawn food pellets locally (deterministic seed from room)
+  TAG_FOOD=[];
+  for(var fi=0;fi<25;fi++){
+    TAG_FOOD.push({x:Math.random()*TAG_W,y:Math.random()*TAG_H,col:NEON[fi%NEON.length],r:5});
+  }
+
+  // Push my state to Firebase
+  function pushTag(){
+    if(!GAME_ACTIVE)return;
+    window._fb.set(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/game/tag/'+myUID),{
+      name:myName,color:myGameColor,x:Math.round(myTag.x),y:Math.round(myTag.y),
+      size:Math.round(myTag.size),score:myTag.score,it:myTag.it,ts:Date.now()
+    });
+  }
+
+  // Listen to all players
+  var tagRef=window._fb.ref(window._fb.db,'rooms/'+myRoom+'/game/tag');
+  var unsub=window._fb.onValue(tagRef,function(snap){
+    var all=snap.val()||{};
+    // Clean stale (no update for 5s)
+    var now=Date.now();
+    Object.keys(all).forEach(function(k){if(k!==myUID&&all[k].ts&&(now-all[k].ts)>5000)delete all[k];});
+    TAG_PLAYERS=all;
+    updateScoreboard(all);
+  });
+  gameUnsubscribers.push(unsub);
+
+  // Input
+  tagKeys={};
+  function kd(e){tagKeys[e.key.toLowerCase()]=true;if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()))e.preventDefault();}
+  function ku(e){tagKeys[e.key.toLowerCase()]=false;}
+  document.addEventListener('keydown',kd);
+  document.addEventListener('keyup',ku);
+  gameUnsubscribers.push(function(){document.removeEventListener('keydown',kd);document.removeEventListener('keyup',ku);});
+
+  var lastPush=0;
+  gameLoop=setInterval(function(){
+    if(!GAME_ACTIVE)return;
+    TAG_W=canvas.width;TAG_H=canvas.height;
+
+    // Movement — speed scales with inverse size
+    var spd=Math.max(1.8,(4.5-myTag.size*0.08));
+    var dx=0,dy=0;
+    if(tagKeys['arrowleft']||tagKeys['a'])dx=-spd;
+    if(tagKeys['arrowright']||tagKeys['d'])dx=spd;
+    if(tagKeys['arrowup']||tagKeys['w'])dy=-spd;
+    if(tagKeys['arrowdown']||tagKeys['s'])dy=spd;
+    // Normalize diagonal
+    if(dx&&dy){dx*=0.707;dy*=0.707;}
+    myTag.x=Math.max(myTag.size,Math.min(TAG_W-myTag.size,myTag.x+dx));
+    myTag.y=Math.max(myTag.size,Math.min(TAG_H-myTag.size,myTag.y+dy));
+
+    // Eat food pellets
+    TAG_FOOD.forEach(function(f,i){
+      if(!f||f.eaten)return;
+      var d=Math.hypot(myTag.x-f.x,myTag.y-f.y);
+      if(d<myTag.size+f.r){f.eaten=true;myTag.size=Math.min(40,myTag.size+1.5);myTag.score++;
+        setTimeout(function(){f.x=Math.random()*TAG_W;f.y=Math.random()*TAG_H;f.eaten=false;},3000);
+      }
+    });
+
+    // Tag collisions with other players
+    Object.keys(TAG_PLAYERS).forEach(function(k){
+      if(k===myUID)return;
+      var p=TAG_PLAYERS[k];
+      if(!p)return;
+      var d=Math.hypot(myTag.x-p.x,myTag.y-p.y);
+      var minDist=myTag.size+(p.size||12);
+      if(d<minDist){
+        // Tag! If I'm bigger, I grow they shrink; if "it" also steal score
+        if(myTag.size>=(p.size||12)){
+          myTag.size=Math.min(40,myTag.size+0.5);
+          myTag.score+=2;
+        } else {
+          myTag.size=Math.max(6,myTag.size-0.5);
+        }
+      }
+    });
+
+    // Shrink slowly if big
+    if(myTag.size>12)myTag.size=Math.max(12,myTag.size-0.015);
+
+    // Push to Firebase every 80ms
+    var now=Date.now();
+    if(now-lastPush>80){lastPush=now;pushTag();}
+
+    // Draw
+    drawTagFrame(canvas);
+  },33);
+
+  document.getElementById('game-status').textContent='WASD/Arrows to move · Eat dots · Tag others!';
+}
+
+function drawTagFrame(canvas){
+  var ctx=canvas.getContext('2d');
+  TAG_W=canvas.width;TAG_H=canvas.height;
+  // Background
+  ctx.fillStyle='#050810';ctx.fillRect(0,0,TAG_W,TAG_H);
+  // Grid lines
+  ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=1;
+  for(var gx=0;gx<TAG_W;gx+=40){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,TAG_H);ctx.stroke();}
+  for(var gy=0;gy<TAG_H;gy+=40){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(TAG_W,gy);ctx.stroke();}
+
+  // Food pellets
+  TAG_FOOD.forEach(function(f){
+    if(f.eaten)return;
+    ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);
+    ctx.fillStyle=f.col;ctx.shadowColor=f.col;ctx.shadowBlur=8;ctx.fill();ctx.shadowBlur=0;
+  });
+
+  // Other players
+  Object.keys(TAG_PLAYERS).forEach(function(k){
+    if(k===myUID)return;
+    var p=TAG_PLAYERS[k];if(!p)return;
+    var col=p.color||'#ff4466';var sz=p.size||12;
+    ctx.beginPath();ctx.arc(p.x,p.y,sz,0,Math.PI*2);
+    ctx.fillStyle=hexA(col,0.85);ctx.shadowColor=col;ctx.shadowBlur=sz*1.5;ctx.fill();ctx.shadowBlur=0;
+    ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font='bold '+(Math.max(9,sz*0.65))+'px Syne';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(esc(p.name||'?').substring(0,6),p.x,p.y);
+    ctx.fillStyle=col;ctx.font='9px DM Mono';ctx.fillText(p.score||0,p.x,p.y+sz+10);
+  });
+
+  // My dot
+  var mc=myGameColor,ms=myTag.size;
+  ctx.beginPath();ctx.arc(myTag.x,myTag.y,ms,0,Math.PI*2);
+  ctx.fillStyle=hexA(mc,0.9);ctx.shadowColor=mc;ctx.shadowBlur=ms*2;ctx.fill();ctx.shadowBlur=0;
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#000';ctx.font='bold '+(Math.max(9,ms*0.65))+'px Syne';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(myName.substring(0,6),myTag.x,myTag.y);
+  ctx.fillStyle=mc;ctx.font='9px DM Mono';ctx.fillText(myTag.score,myTag.x,myTag.y+ms+10);
+}
+
+
+/* ═══════════════════════════════════════════
+   MULTI SNAKE
+   ─ Each player = a growing snake
+   ─ Eat food to grow, score++
+   ─ Hit a wall or another snake = respawn
+   ─ Sync head position & direction each frame
+   ═══════════════════════════════════════════ */
+
+var SNAKE_GRID=20; // cell size px
+var SNAKE_COLS=30,SNAKE_ROWS=20;
+var mySnake={segs:[],dir:{x:1,y:0},nextDir:{x:1,y:0},score:0,alive:true,color:'#00ff9d'};
+var SNAKE_FOOD=[];
+var SNAKE_OTHERS={};
+var snakeKeys={};
+var snakeTick=0;
+
+function startSnakeGame(){
+  if(!window._fb||!myRoom)return;
+  myGameColor=NEON[Math.abs(simpleHash(myUID||'x'))%NEON.length];
+  var canvas=document.getElementById('game-canvas');
+  // Fit grid to canvas
+  SNAKE_COLS=Math.floor(canvas.width/SNAKE_GRID)||30;
+  SNAKE_ROWS=Math.floor(canvas.height/SNAKE_GRID)||20;
+
+  // Init snake
+  mySnake={
+    segs:[{x:Math.floor(SNAKE_COLS/2),y:Math.floor(SNAKE_ROWS/2)}],
+    dir:{x:1,y:0},nextDir:{x:1,y:0},score:0,alive:true,
+    color:myGameColor
+  };
+
+  // Food
+  SNAKE_FOOD=[];
+  for(var fi=0;fi<8;fi++)SNAKE_FOOD.push(snakeRandFood());
+
+  // Firebase sync
+  function pushSnake(){
+    if(!GAME_ACTIVE)return;
+    window._fb.set(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/game/snake/'+myUID),{
+      name:myName,color:myGameColor,
+      segs:mySnake.segs.slice(0,20), // send only first 20 segs for bandwidth
+      score:mySnake.score,alive:mySnake.alive,ts:Date.now()
+    });
+  }
+
+  var snakeRef=window._fb.ref(window._fb.db,'rooms/'+myRoom+'/game/snake');
+  var unsub=window._fb.onValue(snakeRef,function(snap){
+    var all=snap.val()||{};
+    var now=Date.now();
+    Object.keys(all).forEach(function(k){if(k!==myUID&&all[k].ts&&(now-all[k].ts)>3000)delete all[k];});
+    SNAKE_OTHERS=all;
+    updateScoreboard(all);
+  });
+  gameUnsubscribers.push(unsub);
+
+  snakeKeys={};
+  function kd(e){snakeKeys[e.key]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))e.preventDefault();}
+  function ku(e){snakeKeys[e.key]=false;}
+  document.addEventListener('keydown',kd);document.addEventListener('keyup',ku);
+  gameUnsubscribers.push(function(){document.removeEventListener('keydown',kd);document.removeEventListener('keyup',ku);});
+
+  snakeTick=0;
+  var lastPush=0;
+  gameLoop=setInterval(function(){
+    if(!GAME_ACTIVE)return;
+    snakeTick++;
+
+    // Handle input (update nextDir, don't allow 180)
+    if((snakeKeys['ArrowUp']||snakeKeys['w'])&&mySnake.dir.y===0)mySnake.nextDir={x:0,y:-1};
+    if((snakeKeys['ArrowDown']||snakeKeys['s'])&&mySnake.dir.y===0)mySnake.nextDir={x:0,y:1};
+    if((snakeKeys['ArrowLeft']||snakeKeys['a'])&&mySnake.dir.x===0)mySnake.nextDir={x:-1,y:0};
+    if((snakeKeys['ArrowRight']||snakeKeys['d'])&&mySnake.dir.x===0)mySnake.nextDir={x:1,y:0};
+
+    // Move every 5 ticks (~8fps movement on 25fps loop = smooth feel)
+    if(snakeTick%5===0&&mySnake.alive){
+      mySnake.dir=mySnake.nextDir;
+      var head=mySnake.segs[0];
+      var nx=head.x+mySnake.dir.x;
+      var ny=head.y+mySnake.dir.y;
+      // Wall collision = wrap around
+      nx=((nx%SNAKE_COLS)+SNAKE_COLS)%SNAKE_COLS;
+      ny=((ny%SNAKE_ROWS)+SNAKE_ROWS)%SNAKE_ROWS;
+
+      // Self collision
+      var selfHit=mySnake.segs.slice(1).some(function(s){return s.x===nx&&s.y===ny;});
+      // Other snake collision
+      var otherHit=Object.values(SNAKE_OTHERS).some(function(p){
+        return p.segs&&p.segs.some(function(s){return s.x===nx&&s.y===ny;});
+      });
+      if(selfHit||otherHit){
+        // Die + respawn after 1.5s
+        mySnake.alive=false;
+        setTimeout(function(){
+          mySnake.segs=[{x:Math.floor(Math.random()*SNAKE_COLS),y:Math.floor(Math.random()*SNAKE_ROWS)}];
+          mySnake.dir={x:1,y:0};mySnake.nextDir={x:1,y:0};mySnake.alive=true;
+        },1500);
+      } else {
+        mySnake.segs.unshift({x:nx,y:ny});
+        // Check food
+        var ateFood=false;
+        SNAKE_FOOD.forEach(function(f,fi){
+          if(f&&f.x===nx&&f.y===ny){ateFood=true;mySnake.score++;SNAKE_FOOD[fi]=snakeRandFood();}
+        });
+        if(!ateFood)mySnake.segs.pop();
+      }
+    }
+
+    // Push every 100ms
+    var now=Date.now();
+    if(now-lastPush>100){lastPush=now;pushSnake();}
+
+    drawSnakeFrame(document.getElementById('game-canvas'));
+  },40);
+
+  document.getElementById('game-status').textContent='WASD/Arrows to steer · Eat 🟡 to grow!';
+}
+
+function snakeRandFood(){return{x:Math.floor(Math.random()*SNAKE_COLS),y:Math.floor(Math.random()*SNAKE_ROWS),col:NEON[Math.floor(Math.random()*NEON.length)]};}
+
+function drawSnakeFrame(canvas){
+  var ctx=canvas.getContext('2d');
+  var W=canvas.width,H=canvas.height;
+  SNAKE_COLS=Math.floor(W/SNAKE_GRID)||30;SNAKE_ROWS=Math.floor(H/SNAKE_GRID)||20;
+  var cw=W/SNAKE_COLS,ch=H/SNAKE_ROWS;
+
+  ctx.fillStyle='#050810';ctx.fillRect(0,0,W,H);
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,.035)';ctx.lineWidth=1;
+  for(var gc=0;gc<=SNAKE_COLS;gc++){ctx.beginPath();ctx.moveTo(gc*cw,0);ctx.lineTo(gc*cw,H);ctx.stroke();}
+  for(var gr=0;gr<=SNAKE_ROWS;gr++){ctx.beginPath();ctx.moveTo(0,gr*ch);ctx.lineTo(W,gr*ch);ctx.stroke();}
+
+  // Food
+  SNAKE_FOOD.forEach(function(f){
+    if(!f)return;
+    ctx.fillStyle=f.col;ctx.shadowColor=f.col;ctx.shadowBlur=10;
+    ctx.fillRect(f.x*cw+2,f.y*ch+2,cw-4,ch-4);ctx.shadowBlur=0;
+  });
+
+  // Other snakes
+  Object.keys(SNAKE_OTHERS).forEach(function(k){
+    var p=SNAKE_OTHERS[k];if(!p||!p.segs)return;
+    var col=p.color||'#ff4466';
+    p.segs.forEach(function(s,si){
+      var alpha=si===0?1:Math.max(0.3,1-si*0.04);
+      ctx.fillStyle=hexA(col,alpha);
+      if(si===0){ctx.shadowColor=col;ctx.shadowBlur=12;}else{ctx.shadowBlur=0;}
+      ctx.fillRect(s.x*cw+1,s.y*ch+1,cw-2,ch-2);
+    });
+    ctx.shadowBlur=0;
+    if(p.segs[0]){
+      ctx.fillStyle='#fff';ctx.font='bold 9px Syne';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(esc(p.name||'?').substring(0,5),p.segs[0].x*cw+cw/2,p.segs[0].y*ch+ch/2);
+    }
+  });
+
+  // My snake
+  mySnake.segs.forEach(function(s,si){
+    var col=mySnake.color;
+    var alpha=mySnake.alive?(si===0?1:Math.max(0.3,1-si*0.035)):0.25;
+    ctx.fillStyle=hexA(col,alpha);
+    if(si===0&&mySnake.alive){ctx.shadowColor=col;ctx.shadowBlur=14;}else{ctx.shadowBlur=0;}
+    ctx.fillRect(s.x*cw+1,s.y*ch+1,cw-2,ch-2);
+  });
+  ctx.shadowBlur=0;
+  if(mySnake.segs[0]&&mySnake.alive){
+    ctx.fillStyle='#000';ctx.font='bold 9px Syne';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(myName.substring(0,5),mySnake.segs[0].x*cw+cw/2,mySnake.segs[0].y*ch+ch/2);
+  }
+  if(!mySnake.alive){
+    ctx.fillStyle='rgba(255,68,102,.7)';ctx.font='bold 18px Syne';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('💀 Respawning…',W/2,H/2);
+  }
 }
 
 /* ══ THEMES ══ */
@@ -1527,10 +2109,34 @@ function initSettingsTabs(){
 
 /* ══ HELPERS ══ */
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function hexA(hex,a){
+  // Convert hex color to rgba
+  hex=hex.replace('#','');
+  if(hex.length===3)hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+  var r=parseInt(hex.substring(0,2),16),g=parseInt(hex.substring(2,4),16),b=parseInt(hex.substring(4,6),16);
+  return 'rgba('+r+','+g+','+b+','+a+')';
+}
+function shiftHue(hex,deg){
+  // Shift hue of a hex color by deg degrees
+  hex=hex.replace('#','');
+  if(hex.length===3)hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+  var r=parseInt(hex.substring(0,2),16)/255,g=parseInt(hex.substring(2,4),16)/255,b=parseInt(hex.substring(4,6),16)/255;
+  var max=Math.max(r,g,b),min=Math.min(r,g,b),h,s,l=(max+min)/2;
+  if(max===min){h=s=0;}else{var d=max-min;s=l>0.5?d/(2-max-min):d/(max+min);
+    if(max===r)h=((g-b)/d+(g<b?6:0))/6;
+    else if(max===g)h=((b-r)/d+2)/6;
+    else h=((r-g)/d+4)/6;}
+  h=(h*360+deg)%360/360;if(h<0)h+=1;
+  // hsl to rgb
+  function hue2rgb(p,q,t){if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;}
+  var q2=l<0.5?l*(1+s):l+s-l*s,p2=2*l-q2;
+  var nr=hue2rgb(p2,q2,h+1/3),ng2=hue2rgb(p2,q2,h),nb=hue2rgb(p2,q2,h-1/3);
+  return '#'+[nr,ng2,nb].map(function(x){return Math.round(x*255).toString(16).padStart(2,'0');}).join('');
+}
 
 /* ══ INIT ══ */
 document.addEventListener('DOMContentLoaded',function(){
-  buildGrid();initResize();subscribeFB();initVidToolbar();initDraw();initStickers();initEmoji();initRadio();initSettingsTabs();initTheme();
+  buildGrid();initResize();subscribeFB();initVidToolbar();initDraw();initStickers();initEmoji();initRadio();initSettingsTabs();initTheme();initGames();
   document.getElementById('join-btn').addEventListener('click',function(){go(document.getElementById('room-in').value.trim().replace(/\s+/g,'-').toLowerCase()||'general');});
   document.getElementById('room-in').addEventListener('keydown',function(e){if(e.key==='Enter')go(this.value.trim().replace(/\s+/g,'-').toLowerCase()||'general');});
   document.getElementById('name-in').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('room-in').focus();});
