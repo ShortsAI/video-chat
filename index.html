@@ -333,6 +333,51 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 .settings-label{display:block;margin:8px 0 3px;font-size:12px;color:var(--text)}
 
 @media(max-width:768px){.chat-panel{width:100% !important;max-width:none;min-width:auto}.resize-handle{display:none}}
+
+/* ═══ PROFILES ═══ */
+.profile-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.profile-modal.open{display:flex}
+.profile-box{background:linear-gradient(160deg,#0f1220,#0a0d18);border:1px solid rgba(0,229,160,.3);border-radius:20px;padding:28px 28px 22px;width:340px;max-width:95vw;box-shadow:0 0 60px rgba(0,229,160,.15);position:relative}
+.profile-close-btn{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;transition:color .15s}
+.profile-close-btn:hover{color:#ff4466}
+.profile-avatar-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:18px}
+.profile-avatar{width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);box-shadow:0 0 20px rgba(0,229,160,.4);background:var(--surface2)}
+.profile-avatar-placeholder{width:80px;height:80px;border-radius:50%;background:var(--surface2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;transition:all .2s}
+.profile-avatar-placeholder:hover{border-color:var(--accent);box-shadow:0 0 14px rgba(0,229,160,.3)}
+.profile-upload-hint{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;text-align:center}
+.profile-name-display{font-size:20px;font-weight:800;font-family:'Syne',sans-serif;text-align:center}
+.profile-bio-display{font-size:12px;color:var(--muted);text-align:center;line-height:1.5;font-family:'DM Mono',monospace;margin-top:4px}
+.profile-edit-row{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.profile-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.profile-bio-in{width:100%;padding:8px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;resize:none;outline:none;transition:border-color .2s;box-sizing:border-box}
+.profile-bio-in:focus{border-color:var(--accent)}
+.profile-save-btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#000;border:none;border-radius:10px;padding:10px 0;font-family:'Syne',sans-serif;font-weight:800;font-size:13px;cursor:pointer;width:100%;transition:opacity .15s}
+.profile-save-btn:hover{opacity:.88}
+/* Visitors section in lobby */
+.visitors-sec{margin-top:22px}
+.visitors-grid{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.visitor-card{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;padding:8px 10px;border-radius:12px;background:var(--surface);border:1px solid var(--border);transition:all .2s;min-width:72px}
+.visitor-card:hover{border-color:var(--accent);background:rgba(0,229,160,.06);transform:translateY(-2px)}
+.visitor-avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,.15)}
+.visitor-avatar-ph{width:44px;height:44px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px;border:1px solid var(--border)}
+.visitor-name{font-size:10px;font-weight:700;font-family:'Syne',sans-serif;text-align:center;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Profile trigger on username pills */
+.upill{cursor:pointer}
+.upill:hover{opacity:.85}
+/* View-profile modal (read-only) */
+.profile-stat-row{display:flex;gap:12px;justify-content:center;margin:8px 0}
+.profile-stat{text-align:center}
+.profile-stat-val{font-size:16px;font-weight:800;font-family:'DM Mono',monospace;color:var(--accent)}
+.profile-stat-lbl{font-size:9px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase}
+
+
+/* ═══ ECHO VEIL ═══ */
+#veil-canvas{position:absolute;inset:0;width:100%;height:100%;display:none;cursor:grab;z-index:15;touch-action:none}
+#veil-canvas.panning{cursor:grabbing}
+#veil-canvas.connecting{cursor:crosshair}
+.veil-controls{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:16;display:none;background:rgba(0,0,0,.72);border:1px solid rgba(0,229,160,.25);border-radius:12px;padding:8px 16px;font-size:11px;color:rgba(255,255,255,.7);font-family:'DM Mono',monospace;pointer-events:none;white-space:nowrap;backdrop-filter:blur(6px)}
+.veil-node-tooltip{position:absolute;background:rgba(5,8,16,.92);border:1px solid rgba(0,229,160,.3);border-radius:8px;padding:7px 10px;font-size:11px;font-family:'DM Mono',monospace;color:#fff;pointer-events:none;z-index:17;max-width:220px;word-break:break-word;display:none;box-shadow:0 0 14px rgba(0,229,160,.2)}
+
 </style>
 </head>
 <body>
@@ -355,7 +400,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
       <p>Instant video &amp; text chat — pick a room or make your own</p>
     </div>
     <div class="entry-row">
-      <div class="entry-field"><label class="lbl-n" for="name-in">Your name</label><input id="name-in" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off"/></div>
+      <div class="entry-field"><label class="lbl-n" for="name-in">Your name <span id="lobby-profile-link" style="font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;color:var(--accent2);font-size:9px;margin-left:4px" title="Create/edit your profile">✦ profile</span></label><input id="name-in" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off"/></div>
       <div class="entry-field custom"><label class="lbl-r" for="room-in">Custom room</label><input id="room-in" type="text" placeholder="my-room-id" maxlength="40" autocomplete="off"/></div>
       <button class="entry-btn" id="join-btn">Enter →</button>
     </div>
@@ -370,6 +415,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
     <div class="other-sec" id="other-sec" style="display:none">
       <div class="sec-label" style="margin-top:18px">🔴 Other Live Rooms</div>
       <div class="other-grid" id="other-grid"></div>
+    </div>
+    <!-- RECENT VISITORS -->
+    <div class="visitors-sec" id="visitors-sec">
+      <div class="sec-label">👾 Recent Visitors</div>
+      <div class="visitors-grid" id="visitors-grid"></div>
     </div>
   </div>
 </div>
@@ -400,6 +450,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
     <button class="vt red vt-right" id="vt-leave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Leave</button>
     <div class="vt-sep"></div>
     <button class="vt" id="vt-game">🎮 Game</button>
+    <button class="vt" id="vt-veil" title="Echo Veil — persistent memory constellation">🌌 Veil</button>
     <div class="vt-sep"></div>
     <button class="vt" id="vt-flash" title="Flashlight mode">🔦 Flash</button>
   </div>
@@ -410,6 +461,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
       <div id="jaas-container"></div>
       <canvas id="draw-canvas"></canvas>
       <div id="sticker-layer"></div>
+      <!-- ECHO VEIL -->
+      <canvas id="veil-canvas"></canvas>
+      <div class="veil-controls" id="veil-controls">
+        Drag nodes · Shift+drag = connect · Wheel = zoom/pan · Dbl-click = expand
+      </div>
+      <div class="veil-node-tooltip" id="veil-tooltip"></div>
       <!-- GAME PANEL -->
       <div id="game-panel" style="display:none;position:absolute;inset:0;z-index:28;background:#050810;flex-direction:column">
         <div id="game-header" style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid rgba(0,229,160,.2);background:rgba(0,0,0,.6);flex-shrink:0">
@@ -473,6 +530,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
       <div class="chat-hdr">💬 Chat
         <div style="display:flex;gap:5px;align-items:center">
           <button id="rpg-tog-btn" style="background:rgba(153,51,255,.18);border:1px solid rgba(153,51,255,.45);border-radius:6px;color:#cc88ff;cursor:pointer;font-size:11px;padding:3px 8px;font-family:'Syne',sans-serif;font-weight:700">⚔️</button>
+          <button id="profile-btn" style="background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.3);border-radius:6px;color:var(--accent);cursor:pointer;font-size:12px;padding:3px 8px;font-family:'Syne',sans-serif;font-weight:700" title="My Profile">👤</button>
           <button id="settings-btn" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:14px">⚙️</button>
         </div>
       </div>
@@ -789,30 +847,49 @@ function renderGrid(){
 }
 
 /* ══ FIREBASE ══ */
+/* ── Count only non-stale users (ts within 5min OR no ts = legacy) ── */
+function countUsers(ud){
+  var now=Date.now(),u=0,c=0,s=0;
+  Object.keys(ud).forEach(function(k){
+    var usr=ud[k];
+    // If ts exists and is >6min old, skip (stale/ghost)
+    if(usr.ts&&(now-usr.ts)>360000)return;
+    u++;
+    if(usr.hasCamera===true)c++;
+    if(usr.hasScreen===true)s++;
+  });
+  return{u:u,c:c,s:s};
+}
 function subscribeFB(){
   function setup(){
     var fb=window._fb;
     PID.concat(['test']).forEach(function(rid){
       fb.onValue(fb.ref(fb.db,'rooms/'+rid+'/users'),function(snap){
-        var ud=snap.val()||{},u=0,c=0,s=0;
-        Object.keys(ud).forEach(function(k){u++;if(ud[k].hasCamera===true)c++;if(ud[k].hasScreen===true)s++;});
-        if(rid==='test'){var el=document.getElementById('test-stats');if(el)el.innerHTML=sh(u,c,s);}
-        else{PST[rid].u=u;PST[rid].c=c;PST[rid].s=s;renderGrid();}
+        var ud=snap.val()||{};
+        var ct=countUsers(ud);
+        if(rid==='test'){var el=document.getElementById('test-stats');if(el)el.innerHTML=sh(ct.u,ct.c,ct.s);}
+        else{PST[rid].u=ct.u;PST[rid].c=ct.c;PST[rid].s=ct.s;renderGrid();}
       });
     });
     fb.onValue(fb.ref(fb.db,'presence'),function(snap){
-      var n=snap.val()?Object.keys(snap.val()).length:0;
+      // Count only non-stale presence entries
+      var now=Date.now(),n=0;
+      var pd=snap.val()||{};
+      Object.keys(pd).forEach(function(k){var p=pd[k];if(!p.ts||(now-p.ts)<360000)n++;});
       document.getElementById('total-count').textContent=n;
-      var a=document.getElementById('hdr-count');if(a)a.textContent=n;
+      // Only update hdr-count when in lobby (app header uses room-specific count)
+      var appVisible=document.getElementById('app')&&document.getElementById('app').classList.contains('visible');
+      if(!appVisible){var a=document.getElementById('hdr-count');if(a)a.textContent=n;}
     });
     fb.onValue(fb.ref(fb.db,'rooms'),function(snap){
       var all=snap.val()||{},others=[];
       Object.keys(all).forEach(function(rid){
         if(PID.indexOf(rid)!==-1||rid==='test')return;
-        var ud=all[rid].users||{},u=Object.keys(ud).length;if(u===0)return;
-        var c=0,s=0;Object.keys(ud).forEach(function(k){if(ud[k].hasCamera===true)c++;if(ud[k].hasScreen===true)s++;});
+        var ud=all[rid].users||{};
+        var ct=countUsers(ud);  // filter ghosts
+        if(ct.u===0)return;
         var meta=all[rid].meta||{};
-        others.push({id:rid,emoji:meta.emoji||'🚪',color:meta.color||'#aaaaff',u:u,c:c,s:s});
+        others.push({id:rid,emoji:meta.emoji||'🚪',color:meta.color||'#aaaaff',u:ct.u,c:ct.c,s:ct.s});
       });
       others.sort(function(a,b){return b.u-a.u;});
       renderOthers(others);
@@ -821,7 +898,7 @@ function subscribeFB(){
     fb.onChildAdded(fb.ref(fb.db,'party'),function(snap){var d=snap.val()||{};if(d.on)startParty();else stopParty();});
     fb.onChildAdded(fb.ref(fb.db,'stickers'),function(snap){var d=snap.val()||{};if(d.room===myRoom)placeSticker(d.emoji,d.x,d.y,false);});
   }
-  if(window._fb)setup();else window.addEventListener('firebase-ready',setup,{once:true});
+  if(window._fb){setup();setTimeout(loadVisitors,1200);}else window.addEventListener('firebase-ready',function(){setup();setTimeout(loadVisitors,1200);},{once:true});
 }
 function renderOthers(list){
   var sec=document.getElementById('other-sec'),grid=document.getElementById('other-grid');
@@ -881,12 +958,34 @@ function go(roomId){
     }
     var pRef=fb.ref(fb.db,'presence/'+myUID);
     fb.set(pRef,{name:myName,room:roomId,ts:Date.now()});fb.onDisconnect(pRef).remove();
+    // Update profile lastSeen + increment rooms visited
+    (function(){
+      var saved=getProfile(myName)||{name:myName,bio:'',flair:'',avatar:null,color:col,firstSeen:Date.now(),lastSeen:Date.now(),rooms:0};
+      saved.lastSeen=Date.now();saved.rooms=(saved.rooms||0)+1;saved.color=col;
+      saveProfileLocal(saved);
+      var fbProf={name:myName,bio:saved.bio||'',flair:saved.flair||'',color:col,lastSeen:Date.now(),firstSeen:saved.firstSeen||Date.now(),rooms:saved.rooms};
+      if(saved.avatar)fbProf.avatar=saved.avatar;
+      fb.set(fb.ref(fb.db,'profiles/'+safeName(myName)),fbProf);
+    })();
     // Clean stale presence entries
     fb.get(fb.ref(fb.db,'presence')).then(function(snap){
       var now=Date.now();var pd=snap.val()||{};
       Object.keys(pd).forEach(function(k){if(k!==myUID&&pd[k].ts&&(now-pd[k].ts)>300000)fb.remove(fb.ref(fb.db,'presence/'+k));});
     }).catch(function(){});
-    fb.onValue(fb.ref(fb.db,'rooms/'+roomId+'/users'),function(s){buildUserList(s.val()||{});});
+    // Smart user-list sync: only rebuild when actual adds/removes happen
+    var _lastUserKeys='';
+    fb.onValue(fb.ref(fb.db,'rooms/'+roomId+'/users'),function(s){
+      var ud=s.val()||{};
+      // Active keys = not stale
+      var now=Date.now();
+      var activeKeys=Object.keys(ud).filter(function(k){var u=ud[k];return !u.ts||(now-u.ts)<360000;}).sort().join(',');
+      // Always rebuild to catch camera/screen status changes, but stable enough
+      buildUserList(ud);
+      // Update in-room header count with room users (not global presence)
+      var ct=countUsers(ud);
+      var hc=document.getElementById('hdr-count');
+      if(hc)hc.textContent=ct.u;
+    });
     fb.onChildAdded(fb.ref(fb.db,'rooms/'+roomId+'/chat'),function(s){
       var msg=s.val()||{};renderMsg(msg,msg.userId===myUID);
     });
@@ -1309,7 +1408,8 @@ function renderMsg(msg,isSelf){
       div.style.borderColor=bc;
       div.style.boxShadow='0 0 8px '+hexA(bc,0.7)+',0 0 16px '+hexA(bc,0.35);
     }
-    div.innerHTML='<div class="msg-meta"><span class="msg-name" style="color:'+esc(bc)+';text-shadow:0 0 6px '+esc(bc)+'">'+esc(msg.name||'?')+'</span><span class="msg-time">'+t+'</span></div><div class="msg-text">'+esc(msg.text||'')+'</div>';
+    var clickable='onclick="viewProfile(\''+esc(msg.name||'?')+'\',\''+esc(bc)+'\')"  style="cursor:pointer"';
+    div.innerHTML='<div class="msg-meta"><span class="msg-name" style="color:'+esc(bc)+';text-shadow:0 0 6px '+esc(bc)+'" '+clickable+'>'+esc(msg.name||'?')+'</span><span class="msg-time">'+t+'</span></div><div class="msg-text">'+esc(msg.text||'')+'</div>';
   }
   div.querySelectorAll('.msg-img').forEach(function(img){img.addEventListener('click',function(){document.getElementById('lb-img').src=img.src;document.getElementById('lightbox').classList.add('open');});img.addEventListener('error',function(){img.style.display='none';});});
   c.appendChild(div);c.scrollTop=c.scrollHeight;
@@ -1408,27 +1508,47 @@ function fetchWeather(query){
 
 /* ══ USER LIST ══ */
 function buildUserList(ud){
+  // Filter out stale ghosts (ts > 6min old) — only count/show active users
+  var now=Date.now();
+  var activeKeys=Object.keys(ud).filter(function(k){
+    var u=ud[k];return !u.ts||(now-u.ts)<360000;
+  });
+
   var list=document.getElementById('users-list');list.innerHTML='';
-  var keys=Object.keys(ud);
-  if(!keys.length){list.innerHTML='<span style="font-size:11px;color:var(--muted)">No one else here yet</span>';return;}
-  keys.forEach(function(k){
-    var u=ud[k],isMe=(k===myUID||u.name===myName);
+  if(!activeKeys.length){
+    list.innerHTML='<span style="font-size:11px;color:var(--muted)">No one else here yet</span>';
+    var lbl=document.querySelector('.users-lbl');if(lbl)lbl.textContent='In room (0)';
+    return;
+  }
+  activeKeys.forEach(function(k){
+    var u=ud[k];
+    if(!u.name)return;
+    var isMe=(k===myUID);
     var p=document.createElement('div');
     p.className='upill'+(isMe?' me':'');
     var col=u.color||'#00ff9d';
     p.style.color=col;
     p.style.borderColor=hexA(col,0.5);
     p.style.boxShadow='0 0 8px '+hexA(col,0.3);
+    // Show avatar thumbnail if profile exists
+    var prof=getProfile(u.name);
+    var avatarHtml='';
+    if(prof&&prof.avatar){
+      avatarHtml='<img src="'+prof.avatar+'" style="width:18px;height:18px;border-radius:50%;object-fit:cover;border:1px solid '+col+';flex-shrink:0" />';
+    }
     var camIcon=u.hasCamera?'<span title="Camera on" style="font-size:9px;opacity:.8">📷</span>':'';
     var scrIcon=u.hasScreen?'<span title="Screensharing" style="font-size:9px;opacity:.8">🖥</span>':'';
     var meTag=isMe?'<span style="font-size:9px;opacity:.6;margin-left:2px">(you)</span>':'';
-    p.innerHTML='<span style="font-size:11px;font-weight:700">'+esc(u.name)+'</span>'+camIcon+scrIcon+meTag;
+    p.innerHTML=avatarHtml+'<span style="font-size:11px;font-weight:700">'+esc(u.name)+'</span>'+camIcon+scrIcon+meTag;
     p.title=u.name+(isMe?' — You':'')+' · joined '+(u.joined?new Date(u.joined).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'?');
+    if(!isMe){(function(un,uc){p.addEventListener('click',function(){viewProfile(un,uc);});})(u.name,col);}
     list.appendChild(p);
   });
-  // Update the label count
   var lbl=document.querySelector('.users-lbl');
-  if(lbl)lbl.textContent='In room ('+keys.length+')';
+  if(lbl)lbl.textContent='In room ('+activeKeys.length+')';
+  // Update in-room counter in header too
+  var hc=document.getElementById('hdr-count');
+  if(hc&&!document.getElementById('lobby').style.display){}// lobby visible = global count shown
 }
 
 /* ══ RESIZE ══ */
@@ -1652,7 +1772,11 @@ function initGames(){
     panel.style.display=on?'flex':'none';
     this.classList.toggle('on',on);
     if(!on)stopGameLoop();
-    else resizeCanvas();
+    else {
+      resizeCanvas();
+      // Close veil if open
+      if(VEIL.active){VEIL.active=false;VEIL.canvas.style.display='none';document.getElementById('veil-controls').style.display='none';document.getElementById('vt-veil').classList.remove('on');stopVeilLoop();}
+    }
   });
 
   closeBtn.addEventListener('click',function(){
@@ -2054,6 +2178,596 @@ function drawSnakeFrame(canvas){
   }
 }
 
+
+/* ══════════════════════════════════════════════════════
+   MINI PROFILES
+   localStorage key: pr_profile_{name}
+   Firebase path: /profiles/{safeName}
+   Avatar: base64 JPEG 64×64 (~3-5KB) stored in both
+   ══════════════════════════════════════════════════════ */
+
+function safeName(n){return(n||'').toLowerCase().replace(/[^a-z0-9_-]/g,'').substring(0,30)||'anon';}
+
+function getProfile(name){
+  try{return JSON.parse(localStorage.getItem('pr_profile_'+safeName(name))||'null');}catch(e){return null;}
+}
+function saveProfileLocal(prof){
+  localStorage.setItem('pr_profile_'+safeName(prof.name),JSON.stringify(prof));
+}
+
+function initProfiles(){
+  var modal=document.getElementById('profile-modal');
+  var viewModal=document.getElementById('view-profile-modal');
+
+  // ── Open my profile modal ──
+  function openMyProfile(){
+    var n=myName||document.getElementById('name-in').value.trim()||'Anonymous';
+    document.getElementById('profile-name-val').textContent=n;
+    var saved=getProfile(n)||{};
+    document.getElementById('profile-bio-in').value=saved.bio||'';
+    document.getElementById('profile-flair-in').value=saved.flair||'';
+    if(saved.avatar){
+      document.getElementById('profile-avatar-img').src=saved.avatar;
+      document.getElementById('profile-avatar-img').style.display='';
+      document.getElementById('avatar-trigger').style.display='none';
+    }else{
+      document.getElementById('profile-avatar-img').style.display='none';
+      document.getElementById('avatar-trigger').style.display='';
+    }
+    document.getElementById('profile-save-status').textContent='';
+    modal.classList.add('open');
+  }
+
+  // Profile button in app
+  var pb=document.getElementById('profile-btn');
+  if(pb)pb.addEventListener('click',openMyProfile);
+
+  // Profile button on name input (lobby) — double-click name field
+  var ni=document.getElementById('name-in');
+  ni.addEventListener('dblclick',openMyProfile);
+  var lpl=document.getElementById('lobby-profile-link');
+  if(lpl)lpl.addEventListener('click',openMyProfile);
+
+  document.getElementById('profile-close-btn').addEventListener('click',function(){modal.classList.remove('open');});
+  document.getElementById('view-profile-close').addEventListener('click',function(){viewModal.classList.remove('open');});
+  modal.addEventListener('click',function(e){if(e.target===modal)modal.classList.remove('open');});
+  viewModal.addEventListener('click',function(e){if(e.target===viewModal)viewModal.classList.remove('open');});
+
+  // ── Avatar upload ──
+  var fileIn=document.getElementById('avatar-file-in');
+  document.getElementById('avatar-trigger').addEventListener('click',function(){fileIn.click();});
+  document.getElementById('profile-avatar-img').addEventListener('click',function(){fileIn.click();});
+
+  fileIn.addEventListener('change',function(){
+    var file=fileIn.files[0];
+    if(!file)return;
+    if(file.size>3*1024*1024){alert('Image too large (max 3MB)');return;}
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      // Resize to 64×64 using canvas
+      var img=new Image();
+      img.onload=function(){
+        var sz=64;
+        var tmpC=document.createElement('canvas');tmpC.width=sz;tmpC.height=sz;
+        var tc=tmpC.getContext('2d');
+        // Crop center square
+        var dim=Math.min(img.width,img.height);
+        var ox=(img.width-dim)/2,oy=(img.height-dim)/2;
+        tc.drawImage(img,ox,oy,dim,dim,0,0,sz,sz);
+        var b64=tmpC.toDataURL('image/jpeg',0.7);
+        document.getElementById('profile-avatar-img').src=b64;
+        document.getElementById('profile-avatar-img').style.display='';
+        document.getElementById('avatar-trigger').style.display='none';
+        // Store temporarily until Save is clicked
+        fileIn._pendingAvatar=b64;
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // ── Save profile ──
+  document.getElementById('profile-save-btn').addEventListener('click',function(){
+    var n=myName||document.getElementById('name-in').value.trim()||'Anonymous';
+    var bio=document.getElementById('profile-bio-in').value.trim().substring(0,80);
+    var flair=document.getElementById('profile-flair-in').value.trim().substring(0,2)||'';
+    var existing=getProfile(n)||{};
+    var avatar=fileIn._pendingAvatar||existing.avatar||null;
+    var col=US.nameColor||'#00ff9d';
+    var prof={name:n,bio:bio,flair:flair,avatar:avatar,color:col,firstSeen:existing.firstSeen||Date.now(),lastSeen:Date.now(),rooms:(existing.rooms||0)+1};
+    saveProfileLocal(prof);
+    // Push to Firebase (avatar is tiny enough at 64×64 JPEG ~3KB)
+    if(window._fb){
+      var fbProf={name:n,bio:bio,flair:flair,color:col,lastSeen:Date.now(),firstSeen:prof.firstSeen};
+      if(avatar)fbProf.avatar=avatar;
+      window._fb.set(window._fb.ref(window._fb.db,'profiles/'+safeName(n)),fbProf);
+    }
+    document.getElementById('profile-save-status').textContent='✓ Profile saved!';
+    setTimeout(function(){modal.classList.remove('open');},900);
+    // Refresh visitors
+    loadVisitors();
+  });
+}
+
+// ── View someone else's profile ──
+function viewProfile(name,color){
+  var viewModal=document.getElementById('view-profile-modal');
+  var col=color||'#00ff9d';
+  document.getElementById('vp-name').textContent=name;
+  document.getElementById('vp-name').style.color=col;
+  document.getElementById('vp-bio').textContent='Loading…';
+  document.getElementById('vp-avatar-ph').style.display='flex';
+  document.getElementById('vp-avatar-img').style.display='none';
+  document.getElementById('vp-rooms').textContent='—';
+  document.getElementById('vp-since').textContent='—';
+
+  // Check local cache first
+  var local=getProfile(name);
+  function applyProfile(p){
+    if(!p){document.getElementById('vp-bio').textContent='No profile set yet 👻';return;}
+    document.getElementById('vp-bio').textContent=(p.flair?p.flair+' ':'')+(p.bio||'No bio yet');
+    document.getElementById('vp-rooms').textContent=p.rooms||1;
+    if(p.firstSeen)document.getElementById('vp-since').textContent=new Date(p.firstSeen).toLocaleDateString();
+    if(p.avatar){
+      document.getElementById('vp-avatar-img').src=p.avatar;
+      document.getElementById('vp-avatar-img').style.display='';
+      document.getElementById('vp-avatar-ph').style.display='none';
+    }
+  }
+  if(local)applyProfile(local);
+  // Also try Firebase
+  if(window._fb){
+    window._fb.get(window._fb.ref(window._fb.db,'profiles/'+safeName(name))).then(function(snap){
+      var p=snap.val();
+      if(p){
+        // Cache it locally too
+        var existing=getProfile(name)||{};
+        saveProfileLocal(Object.assign(existing,p));
+        applyProfile(p);
+      }else if(!local){applyProfile(null);}
+    }).catch(function(){if(!local)applyProfile(null);});
+  }
+  viewModal.classList.add('open');
+}
+
+// ── Load recent visitors from Firebase ──
+function loadVisitors(){
+  if(!window._fb)return;
+  var grid=document.getElementById('visitors-grid');
+  if(!grid)return;
+  window._fb.get(window._fb.ref(window._fb.db,'profiles')).then(function(snap){
+    var all=snap.val()||{};
+    var list=Object.values(all).filter(function(p){return p&&p.name;});
+    // Sort by lastSeen desc
+    list.sort(function(a,b){return (b.lastSeen||0)-(a.lastSeen||0);});
+    list=list.slice(0,24);
+    grid.innerHTML='';
+    if(!list.length){
+      grid.innerHTML='<span style="font-size:11px;color:var(--muted);font-family:\'DM Mono\',monospace">No visitor profiles yet — be the first! Double-click your name to create one.</span>';
+      return;
+    }
+    list.forEach(function(p){
+      var card=document.createElement('div');card.className='visitor-card';
+      card.style.borderColor=hexA(p.color||'#aaa',0.3);
+      var avHtml=p.avatar
+        ?'<img class="visitor-avatar" src="'+esc(p.avatar)+'" alt="'+esc(p.name)+'" loading="lazy"/>'
+        :'<div class="visitor-avatar-ph">'+(p.flair||'👤')+'</div>';
+      card.innerHTML=avHtml+'<div class="visitor-name" style="color:'+(p.color||'#aaa')+'">'+esc(p.name)+'</div>';
+      card.addEventListener('click',function(){viewProfile(p.name,p.color);});
+      // Cache to localStorage
+      var existing=getProfile(p.name)||{};
+      if(!existing.name)saveProfileLocal(Object.assign({firstSeen:Date.now()},p));
+      grid.appendChild(card);
+    });
+  }).catch(function(){
+    if(grid)grid.innerHTML='<span style="font-size:11px;color:var(--muted)">Could not load visitors.</span>';
+  });
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   ECHO VEIL — Persistent visual memory constellation
+   Every chat message = a glowing star node
+   Drag nodes · Shift+drag = connect · Wheel = zoom · Dbl-click = expand
+   Firebase: rooms/{roomId}/veil/{nodes, connections}
+   ══════════════════════════════════════════════════════════════════════ */
+
+var VEIL={
+  active:false,
+  canvas:null,
+  ctx:null,
+  nodes:{},        // key -> {x,y,text,color,sender,ts,pinned}
+  conns:[],        // [{from,to,color}]
+  cam:{x:0,y:0,zoom:1},
+  drag:{on:false,nodeKey:null,startX:0,startY:0,camX:0,camY:0},
+  connect:{on:false,fromKey:null,lineX:0,lineY:0},
+  hover:null,
+  pulse:0,         // animation tick
+  fbUnsub:null,
+  animFrame:null
+};
+
+function veilWorld(cx,cy){
+  // Screen coords → world coords
+  return{x:(cx-VEIL.canvas.width/2)/VEIL.cam.zoom+VEIL.cam.x,
+         y:(cy-VEIL.canvas.height/2)/VEIL.cam.zoom+VEIL.cam.y};
+}
+function veilScreen(wx,wy){
+  // World coords → screen coords
+  return{x:(wx-VEIL.cam.x)*VEIL.cam.zoom+VEIL.canvas.width/2,
+         y:(wy-VEIL.cam.y)*VEIL.cam.zoom+VEIL.canvas.height/2};
+}
+
+function veilNodeAt(sx,sy){
+  var best=null,bestD=Infinity;
+  var HIT_R=22/VEIL.cam.zoom;
+  Object.keys(VEIL.nodes).forEach(function(k){
+    var n=VEIL.nodes[k];
+    var sc=veilScreen(n.x,n.y);
+    var d=Math.hypot(sx-sc.x,sy-sc.y);
+    if(d<HIT_R*VEIL.cam.zoom&&d<bestD){bestD=d;best=k;}
+  });
+  return best;
+}
+
+function veilResize(){
+  var wrap=document.getElementById('video-wrap');
+  if(!wrap||!VEIL.canvas)return;
+  VEIL.canvas.width=wrap.clientWidth||800;
+  VEIL.canvas.height=wrap.clientHeight||600;
+}
+
+function initVeil(){
+  VEIL.canvas=document.getElementById('veil-canvas');
+  if(!VEIL.canvas)return;
+  VEIL.ctx=VEIL.canvas.getContext('2d');
+  veilResize();
+  window.addEventListener('resize',veilResize);
+
+  // ── Mouse/pointer events ──
+  VEIL.canvas.addEventListener('pointerdown',function(e){
+    e.preventDefault();
+    VEIL.canvas.setPointerCapture(e.pointerId);
+    var sx=e.offsetX,sy=e.offsetY;
+    var hit=veilNodeAt(sx,sy);
+    if(e.shiftKey&&hit){
+      // Start connection draw
+      VEIL.connect.on=true;VEIL.connect.fromKey=hit;
+      VEIL.connect.lineX=sx;VEIL.connect.lineY=sy;
+      VEIL.canvas.classList.add('connecting');
+    } else if(hit){
+      // Drag node
+      VEIL.drag.on=true;VEIL.drag.nodeKey=hit;
+      VEIL.drag.startX=sx;VEIL.drag.startY=sy;
+      var n=VEIL.nodes[hit];
+      VEIL.drag.wx=n.x;VEIL.drag.wy=n.y;
+    } else {
+      // Pan canvas
+      VEIL.drag.on=true;VEIL.drag.nodeKey=null;
+      VEIL.drag.startX=sx;VEIL.drag.startY=sy;
+      VEIL.drag.camX=VEIL.cam.x;VEIL.drag.camY=VEIL.cam.y;
+      VEIL.canvas.classList.add('panning');
+    }
+  });
+
+  VEIL.canvas.addEventListener('pointermove',function(e){
+    e.preventDefault();
+    var sx=e.offsetX,sy=e.offsetY;
+
+    // Hover
+    var h=veilNodeAt(sx,sy);
+    if(h!==VEIL.hover){VEIL.hover=h;showVeilTooltip(h,sx,sy);}
+    else if(h&&VEIL.hover){updateVeilTooltipPos(sx,sy);}
+
+    if(VEIL.connect.on){
+      VEIL.connect.lineX=sx;VEIL.connect.lineY=sy;return;
+    }
+    if(!VEIL.drag.on)return;
+    if(VEIL.drag.nodeKey){
+      // Move node in world space
+      var wStart=veilWorld(VEIL.drag.startX,VEIL.drag.startY);
+      var wNow=veilWorld(sx,sy);
+      VEIL.nodes[VEIL.drag.nodeKey].x=VEIL.drag.wx+(wNow.x-wStart.x);
+      VEIL.nodes[VEIL.drag.nodeKey].y=VEIL.drag.wy+(wNow.y-wStart.y);
+    } else {
+      // Pan
+      var dx=(sx-VEIL.drag.startX)/VEIL.cam.zoom;
+      var dy=(sy-VEIL.drag.startY)/VEIL.cam.zoom;
+      VEIL.cam.x=VEIL.drag.camX-dx;
+      VEIL.cam.y=VEIL.drag.camY-dy;
+    }
+  });
+
+  VEIL.canvas.addEventListener('pointerup',function(e){
+    e.preventDefault();
+    var sx=e.offsetX,sy=e.offsetY;
+    VEIL.canvas.classList.remove('panning','connecting');
+    if(VEIL.connect.on){
+      var toKey=veilNodeAt(sx,sy);
+      if(toKey&&toKey!==VEIL.connect.fromKey){
+        var alreadyExists=VEIL.conns.some(function(c){
+          return (c.from===VEIL.connect.fromKey&&c.to===toKey)||(c.from===toKey&&c.to===VEIL.connect.fromKey);
+        });
+        if(!alreadyExists){
+          var fromCol=VEIL.nodes[VEIL.connect.fromKey].color||'#00ff9d';
+          var toCol=VEIL.nodes[toKey].color||'#00ff9d';
+          VEIL.conns.push({from:VEIL.connect.fromKey,to:toKey,color:fromCol});
+          veilSave();
+        }
+      }
+      VEIL.connect.on=false;VEIL.connect.fromKey=null;
+    }
+    if(VEIL.drag.on&&VEIL.drag.nodeKey){veilSave();}
+    VEIL.drag.on=false;VEIL.drag.nodeKey=null;
+  });
+
+  VEIL.canvas.addEventListener('dblclick',function(e){
+    var hit=veilNodeAt(e.offsetX,e.offsetY);
+    if(!hit||!VEIL.nodes[hit])return;
+    var n=VEIL.nodes[hit];
+    // Explode: spawn floating emoji burst + show full text in tooltip
+    spawnFloat('✨',false);
+    var tooltip=document.getElementById('veil-tooltip');
+    if(tooltip){
+      tooltip.style.display='block';
+      tooltip.innerHTML='<strong style="color:'+n.color+'">'+esc(n.sender)+'</strong><br/>'+esc(n.fullText||n.text);
+      tooltip.style.left=(e.offsetX+12)+'px';tooltip.style.top=(e.offsetY-8)+'px';
+      setTimeout(function(){tooltip.style.display='none';},3500);
+    }
+  });
+
+  VEIL.canvas.addEventListener('wheel',function(e){
+    e.preventDefault();
+    var zd=e.deltaY>0?0.88:1.14;
+    VEIL.cam.zoom=Math.max(0.15,Math.min(4,VEIL.cam.zoom*zd));
+  },{passive:false});
+
+  // ── Load persistent Veil data from Firebase ──
+  function loadVeil(){
+    if(!window._fb||!myRoom)return;
+    if(VEIL.fbUnsub)VEIL.fbUnsub();
+    VEIL.fbUnsub=window._fb.onValue(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/veil'),function(snap){
+      var d=snap.val()||{};
+      // Merge incoming nodes with local (don't clobber dragged positions)
+      var incoming=d.nodes||{};
+      Object.keys(incoming).forEach(function(k){
+        if(!VEIL.nodes[k]){
+          VEIL.nodes[k]=incoming[k];
+        } else {
+          // Update text/color but keep local position if recently dragged
+          VEIL.nodes[k].color=incoming[k].color||VEIL.nodes[k].color;
+          VEIL.nodes[k].text=incoming[k].text||VEIL.nodes[k].text;
+        }
+      });
+      // Remove nodes not in Firebase
+      Object.keys(VEIL.nodes).forEach(function(k){if(!incoming[k])delete VEIL.nodes[k];});
+      VEIL.conns=d.connections||[];
+    });
+  }
+
+  // ── Listen to new chat messages → auto-create nodes ──
+  function watchChat(){
+    if(!window._fb||!myRoom)return;
+    // Use onChildAdded — only triggers for new messages
+    window._fb.onChildAdded(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/chat'),function(snap){
+      var msg=snap.val();if(!msg||!msg.text||msg.isDraw||msg.isBot)return;
+      var key='v_'+snap.key;
+      if(VEIL.nodes[key])return;
+      // Scatter new nodes in a ring outward from center
+      var angle=Math.random()*Math.PI*2;
+      var radius=120+Math.random()*220;
+      VEIL.nodes[key]={
+        x:Math.cos(angle)*radius,
+        y:Math.sin(angle)*radius,
+        text:(msg.text||'').substring(0,45)+((msg.text||'').length>45?'…':''),
+        fullText:msg.text||'',
+        color:msg.color||'#00ff9d',
+        sender:msg.name||'?',
+        ts:msg.time||Date.now()
+      };
+      // Don't save for every incoming message — batch save every few seconds
+      if(msg.userId===myUID)veilSave();
+    });
+  }
+
+  // Toolbar button
+  document.getElementById('vt-veil').addEventListener('click',function(){
+    VEIL.active=!VEIL.active;
+    var btn=this;
+    VEIL.canvas.style.display=VEIL.active?'block':'none';
+    document.getElementById('veil-controls').style.display=VEIL.active?'block':'none';
+    btn.classList.toggle('on',VEIL.active);
+    if(VEIL.active){
+      veilResize();
+      if(!VEIL.fbUnsub){loadVeil();watchChat();}
+      startVeilLoop();
+      sysMsg('🌌 Echo Veil — your conversation constellation is alive');
+    } else {
+      stopVeilLoop();
+    }
+  });
+}
+
+function startVeilLoop(){
+  if(VEIL.animFrame)return;
+  function tick(){
+    if(!VEIL.active){VEIL.animFrame=null;return;}
+    VEIL.pulse=(VEIL.pulse+0.018)%(Math.PI*2);
+    drawVeil();
+    VEIL.animFrame=requestAnimationFrame(tick);
+  }
+  VEIL.animFrame=requestAnimationFrame(tick);
+}
+function stopVeilLoop(){
+  if(VEIL.animFrame){cancelAnimationFrame(VEIL.animFrame);VEIL.animFrame=null;}
+}
+
+function drawVeil(){
+  var cv=VEIL.canvas,ctx=VEIL.ctx;
+  if(!cv||!ctx)return;
+  var W=cv.width,H=cv.height;
+
+  ctx.clearRect(0,0,W,H);
+
+  // Deep space background
+  ctx.fillStyle='rgba(2,4,12,0.96)';ctx.fillRect(0,0,W,H);
+
+  // Subtle starfield (static small dots)
+  ctx.fillStyle='rgba(255,255,255,0.25)';
+  // Use seeded positions based on canvas size
+  var seed=W*1000+H;
+  for(var si=0;si<80;si++){
+    seed=(seed*9301+49297)%233280;var sx=(seed/233280)*W;
+    seed=(seed*9301+49297)%233280;var sy=(seed/233280)*H;
+    ctx.fillRect(sx,sy,1,1);
+  }
+
+  // Grid
+  ctx.strokeStyle='rgba(0,229,160,0.055)';ctx.lineWidth=1;
+  var gs=40*VEIL.cam.zoom,offX=((-VEIL.cam.x*VEIL.cam.zoom+W/2)%gs+gs)%gs,offY=((-VEIL.cam.y*VEIL.cam.zoom+H/2)%gs+gs)%gs;
+  for(var gx=offX-gs;gx<W+gs;gx+=gs){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();}
+  for(var gy=offY-gs;gy<H+gs;gy+=gs){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();}
+
+  // Draw connections
+  VEIL.conns.forEach(function(conn){
+    var a=VEIL.nodes[conn.from],b=VEIL.nodes[conn.to];
+    if(!a||!b)return;
+    var sa=veilScreen(a.x,a.y),sb=veilScreen(b.x,b.y);
+    var col=conn.color||'#00e5a0';
+    // Animated neon thread
+    var alpha=0.35+0.15*Math.sin(VEIL.pulse*2);
+    var grad=ctx.createLinearGradient(sa.x,sa.y,sb.x,sb.y);
+    grad.addColorStop(0,hexA(a.color||col,alpha+0.2));
+    grad.addColorStop(0.5,hexA(col,alpha+0.1));
+    grad.addColorStop(1,hexA(b.color||col,alpha+0.2));
+    ctx.strokeStyle=grad;
+    ctx.lineWidth=1.5;
+    ctx.shadowColor=col;ctx.shadowBlur=6;
+    ctx.beginPath();ctx.moveTo(sa.x,sa.y);ctx.lineTo(sb.x,sb.y);ctx.stroke();
+    ctx.shadowBlur=0;
+    // Travelling spark along connection
+    var t=(VEIL.pulse/(Math.PI*2)*2)%1;
+    var spx=sa.x+(sb.x-sa.x)*t,spy=sa.y+(sb.y-sa.y)*t;
+    ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=10;
+    ctx.beginPath();ctx.arc(spx,spy,2.5,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+  });
+
+  // Active connection-draw line
+  if(VEIL.connect.on&&VEIL.connect.fromKey){
+    var fn=VEIL.nodes[VEIL.connect.fromKey];
+    if(fn){
+      var fs=veilScreen(fn.x,fn.y);
+      ctx.strokeStyle='rgba(255,200,0,0.7)';ctx.lineWidth=2;ctx.setLineDash([6,4]);
+      ctx.beginPath();ctx.moveTo(fs.x,fs.y);ctx.lineTo(VEIL.connect.lineX,VEIL.connect.lineY);ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // Draw nodes
+  var keys=Object.keys(VEIL.nodes);
+  var nodeR=Math.max(6,Math.min(22,18*VEIL.cam.zoom));
+  keys.forEach(function(k){
+    var n=VEIL.nodes[k];
+    var sc=veilScreen(n.x,n.y);
+    if(sc.x<-60||sc.x>W+60||sc.y<-60||sc.y>H+60)return;
+
+    var isHover=(k===VEIL.hover);
+    var col=n.color||'#00ff9d';
+    var pulse=isHover?1:0.7+0.12*Math.sin(VEIL.pulse+(n.ts||0)*0.00001);
+    var r=nodeR*(isHover?1.35:1)*pulse;
+
+    // Outer glow
+    var gr=ctx.createRadialGradient(sc.x,sc.y,0,sc.x,sc.y,r*3.5);
+    gr.addColorStop(0,hexA(col,0.22*pulse));
+    gr.addColorStop(0.5,hexA(col,0.08));
+    gr.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=gr;
+    ctx.beginPath();ctx.arc(sc.x,sc.y,r*3.5,0,Math.PI*2);ctx.fill();
+
+    // Core orb
+    var cg=ctx.createRadialGradient(sc.x-r*0.28,sc.y-r*0.28,0,sc.x,sc.y,r);
+    cg.addColorStop(0,'#ffffff');
+    cg.addColorStop(0.3,col);
+    cg.addColorStop(1,hexA(col,0.7));
+    ctx.fillStyle=cg;
+    ctx.shadowColor=col;ctx.shadowBlur=isHover?22:12;
+    ctx.beginPath();ctx.arc(sc.x,sc.y,r,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+
+    // Ring
+    ctx.strokeStyle=hexA(col,isHover?0.9:0.5);ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.arc(sc.x,sc.y,r+3,0,Math.PI*2);ctx.stroke();
+
+    // Text label (only at reasonable zoom)
+    if(VEIL.cam.zoom>0.35){
+      var maxChars=VEIL.cam.zoom>0.75?32:18;
+      var label=(n.sender?n.sender+': ':'')+n.text;
+      if(label.length>maxChars)label=label.substring(0,maxChars)+'…';
+      ctx.fillStyle='rgba(255,255,255,'+(isHover?0.95:0.72)+')';
+      ctx.font=(isHover?'bold ':'')+Math.max(9,Math.min(13,11*VEIL.cam.zoom))+'px DM Mono';
+      ctx.textAlign='center';ctx.textBaseline='top';
+      // Text background
+      var tw=ctx.measureText(label).width;
+      ctx.fillStyle=hexA('#050810',0.72);
+      ctx.fillRect(sc.x-tw/2-3,sc.y+r+5,tw+6,14);
+      ctx.fillStyle='rgba(255,255,255,'+(isHover?0.95:0.72)+')';
+      ctx.fillText(label,sc.x,sc.y+r+6);
+    }
+  });
+
+  // My avatar orb — pulsing at center-ish
+  if(myUID&&myName){
+    var myLastKey=null,myLastTS=0;
+    Object.keys(VEIL.nodes).forEach(function(k){var n=VEIL.nodes[k];if(n.sender===myName&&n.ts>myLastTS){myLastTS=n.ts;myLastKey=k;}});
+    if(myLastKey){
+      var ln=VEIL.nodes[myLastKey];var ls=veilScreen(ln.x,ln.y);
+      var ar=10+4*Math.sin(VEIL.pulse*3);
+      ctx.fillStyle='rgba(255,255,255,0.92)';ctx.shadowColor='#fff';ctx.shadowBlur=16;
+      ctx.beginPath();ctx.arc(ls.x,ls.y,ar,0,Math.PI*2);ctx.fill();
+      ctx.shadowBlur=0;
+      ctx.fillStyle='#050810';ctx.font='bold 7px Syne';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(myName.substring(0,3),ls.x,ls.y);
+    }
+  }
+}
+
+function showVeilTooltip(key,sx,sy){
+  var tooltip=document.getElementById('veil-tooltip');
+  if(!tooltip)return;
+  if(!key||!VEIL.nodes[key]){tooltip.style.display='none';return;}
+  var n=VEIL.nodes[key];
+  tooltip.style.display='block';
+  tooltip.style.left=(sx+14)+'px';tooltip.style.top=(sy-10)+'px';
+  tooltip.innerHTML='<span style="color:'+n.color+';font-weight:700">'+esc(n.sender)+'</span><br/>'+esc(n.fullText||n.text)+'<br/><span style="color:rgba(255,255,255,.4);font-size:9px">'+new Date(n.ts||Date.now()).toLocaleTimeString()+'</span>';
+}
+function updateVeilTooltipPos(sx,sy){
+  var tooltip=document.getElementById('veil-tooltip');
+  if(tooltip&&tooltip.style.display!=='none'){tooltip.style.left=(sx+14)+'px';tooltip.style.top=(sy-10)+'px';}
+}
+
+var _veilSaveTimer=null;
+function veilSave(){
+  // Debounce saves — max once per 1.5s
+  if(_veilSaveTimer)clearTimeout(_veilSaveTimer);
+  _veilSaveTimer=setTimeout(function(){
+    if(!window._fb||!myRoom)return;
+    // Cap nodes at 200 (keep most recent)
+    var nk=Object.keys(VEIL.nodes);
+    if(nk.length>200){
+      nk.sort(function(a,b){return (VEIL.nodes[a].ts||0)-(VEIL.nodes[b].ts||0);});
+      var toRemove=nk.slice(0,nk.length-200);
+      toRemove.forEach(function(k){delete VEIL.nodes[k];});
+      VEIL.conns=VEIL.conns.filter(function(c){return VEIL.nodes[c.from]&&VEIL.nodes[c.to];});
+    }
+    window._fb.set(window._fb.ref(window._fb.db,'rooms/'+myRoom+'/veil'),{
+      nodes:VEIL.nodes,
+      connections:VEIL.conns,
+      updatedAt:Date.now()
+    });
+  },1500);
+}
+
 /* ══ THEMES ══ */
 function initTheme(){
   var saved=JSON.parse(localStorage.getItem('pr_theme')||'{}');
@@ -2136,7 +2850,7 @@ function shiftHue(hex,deg){
 
 /* ══ INIT ══ */
 document.addEventListener('DOMContentLoaded',function(){
-  buildGrid();initResize();subscribeFB();initVidToolbar();initDraw();initStickers();initEmoji();initRadio();initSettingsTabs();initTheme();initGames();
+  buildGrid();initResize();subscribeFB();initVidToolbar();initDraw();initStickers();initEmoji();initRadio();initSettingsTabs();initTheme();initGames();initProfiles();initVeil();
   document.getElementById('join-btn').addEventListener('click',function(){go(document.getElementById('room-in').value.trim().replace(/\s+/g,'-').toLowerCase()||'general');});
   document.getElementById('room-in').addEventListener('keydown',function(e){if(e.key==='Enter')go(this.value.trim().replace(/\s+/g,'-').toLowerCase()||'general');});
   document.getElementById('name-in').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('room-in').focus();});
@@ -2161,6 +2875,54 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 })();
 </script>
+
+
+<!-- MY PROFILE MODAL -->
+<div id="profile-modal" class="profile-modal">
+  <div class="profile-box">
+    <button class="profile-close-btn" id="profile-close-btn">✕</button>
+    <h3 style="margin:0 0 18px;color:var(--accent);font-size:16px;letter-spacing:.05em">⬡ My Profile</h3>
+    <div class="profile-avatar-wrap">
+      <div id="avatar-trigger" class="profile-avatar-placeholder" title="Click to upload photo">🧑</div>
+      <img id="profile-avatar-img" class="profile-avatar" src="" alt="" style="display:none"/>
+      <input type="file" id="avatar-file-in" accept="image/*" style="display:none"/>
+      <div class="profile-upload-hint">Click avatar to upload a photo<br/>Max 2MB · Resized to 64×64</div>
+    </div>
+    <div class="profile-edit-row">
+      <div>
+        <div class="profile-label">Name</div>
+        <div id="profile-name-val" style="font-size:14px;font-weight:700;color:var(--accent);font-family:'Syne',sans-serif;padding:4px 0"></div>
+      </div>
+      <div>
+        <div class="profile-label">Bio / Status <span style="font-weight:400;text-transform:none;letter-spacing:0">(max 80 chars)</span></div>
+        <textarea class="profile-bio-in" id="profile-bio-in" rows="2" maxlength="80" placeholder="What are you about? 🌿"></textarea>
+      </div>
+      <div>
+        <div class="profile-label">Flair emoji</div>
+        <input id="profile-flair-in" type="text" maxlength="2" placeholder="🌟" style="width:60px;padding:6px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--text);font-size:18px;text-align:center;outline:none"/>
+      </div>
+    </div>
+    <button class="profile-save-btn" id="profile-save-btn">Save Profile ✓</button>
+    <div id="profile-save-status" style="text-align:center;font-size:11px;color:var(--accent);margin-top:8px;min-height:16px;font-family:'DM Mono',monospace"></div>
+  </div>
+</div>
+
+<!-- VIEW PROFILE MODAL (read-only, for others) -->
+<div id="view-profile-modal" class="profile-modal">
+  <div class="profile-box">
+    <button class="profile-close-btn" id="view-profile-close">✕</button>
+    <div class="profile-avatar-wrap">
+      <div id="vp-avatar-ph" class="profile-avatar-placeholder" style="cursor:default">🧑</div>
+      <img id="vp-avatar-img" class="profile-avatar" src="" alt="" style="display:none"/>
+    </div>
+    <div id="vp-name" class="profile-name-display" style="color:var(--accent)"></div>
+    <div id="vp-bio" class="profile-bio-display"></div>
+    <div class="profile-stat-row">
+      <div class="profile-stat"><div class="profile-stat-val" id="vp-rooms">—</div><div class="profile-stat-lbl">Rooms</div></div>
+      <div class="profile-stat"><div class="profile-stat-val" id="vp-since">—</div><div class="profile-stat-lbl">Joined</div></div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
