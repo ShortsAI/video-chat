@@ -378,6 +378,36 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 .veil-controls{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:16;display:none;background:rgba(0,0,0,.72);border:1px solid rgba(0,229,160,.25);border-radius:12px;padding:8px 16px;font-size:11px;color:rgba(255,255,255,.7);font-family:'DM Mono',monospace;pointer-events:none;white-space:nowrap;backdrop-filter:blur(6px)}
 .veil-node-tooltip{position:absolute;background:rgba(5,8,16,.92);border:1px solid rgba(0,229,160,.3);border-radius:8px;padding:7px 10px;font-size:11px;font-family:'DM Mono',monospace;color:#fff;pointer-events:none;z-index:17;max-width:220px;word-break:break-word;display:none;box-shadow:0 0 14px rgba(0,229,160,.2)}
 
+
+/* Name field hint */
+.name-hint{font-size:10px;color:rgba(255,255,255,.4);font-family:'DM Mono',monospace;margin-top:4px;line-height:1.4;font-style:normal}
+.name-hint em{color:var(--accent);font-style:normal;font-weight:700}
+.name-field-wrap{flex:1.4!important}
+#name-in{font-size:16px!important;font-weight:700!important;color:var(--accent)!important}
+#name-in::placeholder{color:var(--muted)!important;font-weight:400!important;font-size:13px!important}
+
+
+/* ═══ USERNAME CLAIM / PIN ═══ */
+.claim-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(10px)}
+.claim-modal.open{display:flex}
+.claim-box{background:linear-gradient(160deg,#0f1220,#0a0d18);border:1px solid rgba(0,229,160,.35);border-radius:20px;padding:30px 28px 24px;width:340px;max-width:94vw;box-shadow:0 0 60px rgba(0,229,160,.18);position:relative;text-align:center}
+.claim-title{font-size:20px;font-weight:800;font-family:'Syne',sans-serif;margin-bottom:6px}
+.claim-sub{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:20px;line-height:1.5}
+.pin-row{display:flex;gap:8px;justify-content:center;margin:12px 0 18px}
+.pin-digit{width:48px;height:56px;border-radius:12px;border:2px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);font-size:24px;font-weight:800;text-align:center;outline:none;transition:border-color .2s,box-shadow .2s;font-family:'DM Mono',monospace}
+.pin-digit:focus{border-color:var(--accent);box-shadow:0 0 14px rgba(0,229,160,.3)}
+.claim-btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#000;border:none;border-radius:10px;padding:11px 0;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;cursor:pointer;width:100%;transition:opacity .15s;margin-bottom:8px}
+.claim-btn:hover{opacity:.88}
+.claim-btn.secondary{background:rgba(255,255,255,.08);color:var(--text);font-weight:600;font-size:12px;padding:8px 0}
+.claim-error{color:#ff4466;font-size:11px;font-family:'DM Mono',monospace;min-height:16px;margin-bottom:8px}
+.claim-name-badge{display:inline-block;background:rgba(0,229,160,.12);border:1px solid rgba(0,229,160,.3);border-radius:8px;padding:4px 14px;font-weight:800;color:var(--accent);font-family:'Syne',sans-serif;font-size:16px;margin-bottom:10px}
+/* Claim button next to name field */
+.claim-tag{display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:5px;cursor:pointer;transition:all .15s;user-select:none;font-family:'DM Mono',monospace}
+.claim-tag.unclaimed{color:#ff9900;border:1px solid rgba(255,153,0,.35);background:rgba(255,153,0,.08)}
+.claim-tag.unclaimed:hover{background:rgba(255,153,0,.18)}
+.claim-tag.claimed{color:var(--accent);border:1px solid rgba(0,229,160,.35);background:rgba(0,229,160,.08);cursor:default}
+.claim-tag.mine{color:#00aaff;border:1px solid rgba(0,170,255,.35);background:rgba(0,170,255,.08)}
+
 </style>
 </head>
 <body>
@@ -400,8 +430,16 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
       <p>Instant video &amp; text chat — pick a room or make your own</p>
     </div>
     <div class="entry-row">
-      <div class="entry-field"><label class="lbl-n" for="name-in">Your name <span id="lobby-profile-link" style="font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;color:var(--accent2);font-size:9px;margin-left:4px" title="Create/edit your profile">✦ profile</span></label><input id="name-in" type="text" placeholder="e.g. Alex" maxlength="30" autocomplete="off"/></div>
-      <div class="entry-field custom"><label class="lbl-r" for="room-in">Custom room</label><input id="room-in" type="text" placeholder="my-room-id" maxlength="40" autocomplete="off"/></div>
+      <div class="entry-field name-field-wrap">
+        <label class="lbl-n" for="name-in">
+          ✏️ Your name — <span style="font-weight:400;text-transform:none;letter-spacing:0;color:rgba(255,255,255,.5)">tap to change</span>
+          <span id="lobby-profile-link" style="font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;color:var(--accent2);font-size:9px;margin-left:6px" title="Create/edit your profile">✦ profile</span>
+          <span id="claim-tag" class="claim-tag" style="margin-left:6px"></span>
+        </label>
+        <input id="name-in" type="text" placeholder="Type your name here" maxlength="30" autocomplete="off"/>
+        <div class="name-hint" id="name-hint">☝️ This is a <em>suggestion</em> — type your real name or keep it!</div>
+      </div>
+      <div class="entry-field custom"><label class="lbl-r" for="room-in">Custom room (optional)</label><input id="room-in" type="text" placeholder="my-room-id" maxlength="40" autocomplete="off"/></div>
       <button class="entry-btn" id="join-btn">Enter →</button>
     </div>
     <div class="test-strip" id="test-strip">
@@ -847,13 +885,21 @@ function renderGrid(){
 }
 
 /* ══ FIREBASE ══ */
-/* ── Count only non-stale users (ts within 5min OR no ts = legacy) ── */
+/* ─────────────────────────────────────────────────────────────────────
+   PRESENCE PHILOSOPHY:
+   onDisconnect().remove() is the source of truth. When a tab closes or
+   a user loses connection, Firebase automatically removes their entry.
+   We trust this completely and count ALL entries in the DB — no filtering.
+   The only cleanup we do is one-time: remove entries with NO ts field
+   (true legacy orphans) or ts older than 24h (rare onDisconnect failures).
+   We NEVER delete an entry just because its ts is a few minutes old —
+   that would kick out real users who have been in a room for hours.
+   ───────────────────────────────────────────────────────────────────── */
 function countUsers(ud){
-  var now=Date.now(),u=0,c=0,s=0;
+  // Count everything — Firebase onDisconnect already removed dead entries
+  var u=0,c=0,s=0;
   Object.keys(ud).forEach(function(k){
     var usr=ud[k];
-    // If ts exists and is >6min old, skip (stale/ghost)
-    if(usr.ts&&(now-usr.ts)>360000)return;
     u++;
     if(usr.hasCamera===true)c++;
     if(usr.hasScreen===true)s++;
@@ -872,12 +918,11 @@ function subscribeFB(){
       });
     });
     fb.onValue(fb.ref(fb.db,'presence'),function(snap){
-      // Count only non-stale presence entries
-      var now=Date.now(),n=0;
+      // Count ALL presence entries — onDisconnect handles removal of dead ones
       var pd=snap.val()||{};
-      Object.keys(pd).forEach(function(k){var p=pd[k];if(!p.ts||(now-p.ts)<360000)n++;});
+      var n=Object.keys(pd).length;
       document.getElementById('total-count').textContent=n;
-      // Only update hdr-count when in lobby (app header uses room-specific count)
+      // Only update hdr-count when in lobby (app shows room-specific count)
       var appVisible=document.getElementById('app')&&document.getElementById('app').classList.contains('visible');
       if(!appVisible){var a=document.getElementById('hdr-count');if(a)a.textContent=n;}
     });
@@ -897,8 +942,49 @@ function subscribeFB(){
     fb.onChildAdded(fb.ref(fb.db,'floats'),function(snap){var d=snap.val()||{};spawnFloat(d.emoji||'🔥',false);});
     fb.onChildAdded(fb.ref(fb.db,'party'),function(snap){var d=snap.val()||{};if(d.on)startParty();else stopParty();});
     fb.onChildAdded(fb.ref(fb.db,'stickers'),function(snap){var d=snap.val()||{};if(d.room===myRoom)placeSticker(d.emoji,d.x,d.y,false);});
+    globalGhostSweep(fb);
   }
   if(window._fb){setup();setTimeout(loadVisitors,1200);}else window.addEventListener('firebase-ready',function(){setup();setTimeout(loadVisitors,1200);},{once:true});
+}
+
+/* ── One-time startup cleanup: remove TRUE orphans only ──
+   TRUE orphan = entry with NO ts field (written before heartbeat existed)
+   OR ts older than 24 hours (rare: onDisconnect failed due to network partition)
+   We NEVER remove entries just because ts is a few minutes/hours old —
+   those are real users who have been in a room a long time. ── */
+function globalGhostSweep(fb){
+  var now=Date.now();
+  var ORPHAN_AGE=86400000; // 24 hours — only true crash survivors get removed
+  function sweepUsers(path){
+    fb.get(fb.ref(fb.db,path)).then(function(snap){
+      var ud=snap.val()||{};
+      Object.keys(ud).forEach(function(k){
+        var u=ud[k];
+        // Only remove: no ts (old orphan) OR ts > 24 hours old
+        if(!u.ts||(now-u.ts)>ORPHAN_AGE){
+          fb.remove(fb.ref(fb.db,path+'/'+k));
+        }
+      });
+    }).catch(function(){});
+  }
+  // Sweep preset rooms
+  PID.concat(['test']).forEach(function(rid){sweepUsers('rooms/'+rid+'/users');});
+  // Sweep presence
+  fb.get(fb.ref(fb.db,'presence')).then(function(snap){
+    var pd=snap.val()||{};
+    Object.keys(pd).forEach(function(k){
+      var p=pd[k];
+      if(!p.ts||(now-p.ts)>ORPHAN_AGE)fb.remove(fb.ref(fb.db,'presence/'+k));
+    });
+  }).catch(function(){});
+  // Sweep custom rooms
+  fb.get(fb.ref(fb.db,'rooms')).then(function(snap){
+    var all=snap.val()||{};
+    Object.keys(all).forEach(function(rid){
+      if(PID.indexOf(rid)!==-1||rid==='test')return;
+      sweepUsers('rooms/'+rid+'/users');
+    });
+  }).catch(function(){});
 }
 function renderOthers(list){
   var sec=document.getElementById('other-sec'),grid=document.getElementById('other-grid');
@@ -920,6 +1006,12 @@ function requireName(){
 }
 function go(roomId){
   var name=requireName();if(!name)return;
+  // If name is claimed by someone else, block and prompt for PIN
+  if(_claimState.status==='taken'&&_claimState.name===name){
+    _pendingGoRoom=roomId;
+    openClaimModal('unlock',name);
+    return;
+  }
   myName=name;myRoom=roomId;myUID='u'+Date.now()+Math.random().toString(36).substring(2,8);
   document.getElementById('room-display').textContent='# '+roomId;
   document.getElementById('lobby').style.display='none';
@@ -931,18 +1023,24 @@ function go(roomId){
     var uRef=fb.ref(fb.db,'rooms/'+roomId+'/users/'+myUID);
     fb.set(uRef,{name:myName,joined:Date.now(),ts:Date.now(),color:col,hasCamera:false,hasScreen:false});
     fb.onDisconnect(uRef).remove();
-    // Heartbeat every 45s so we can detect stale users (crashed tabs)
+    // Heartbeat every 60s — safety net ONLY for rare onDisconnect failures.
+    // This is NOT used to detect active users. onDisconnect().remove() handles that.
+    // We write ts so that if onDisconnect ever fails (rare network partition),
+    // the 24h cleanup can eventually clear the orphan.
     setInterval(function(){
-      if(window._fb&&window._myRoom)
-        fb.set(fb.ref(fb.db,'rooms/'+roomId+'/users/'+myUID+'/ts'),Date.now());
-    },45000);
-    // Clean stale users (ts older than 5 min) — run once on join
+      if(window._fb&&window._myRoom){
+        window._fb.set(window._fb.ref(window._fb.db,'rooms/'+roomId+'/users/'+myUID+'/ts'),Date.now());
+        window._fb.set(window._fb.ref(window._fb.db,'presence/'+myUID+'/ts'),Date.now());
+      }
+    },60000);
+    // On-join cleanup: only remove true orphans (no ts) or 24h+ old entries
+    // NEVER remove entries with a fresh-ish ts — those are real long-session users
     fb.get(fb.ref(fb.db,'rooms/'+roomId+'/users')).then(function(snap){
       var now=Date.now();var ud=snap.val()||{};
       Object.keys(ud).forEach(function(k){
+        if(k===myUID)return;
         var u=ud[k];
-        if(k!==myUID&&u.ts&&(now-u.ts)>300000){
-          // Stale — remove silently
+        if(!u.ts||(now-u.ts)>86400000){
           fb.remove(fb.ref(fb.db,'rooms/'+roomId+'/users/'+k));
         }
       });
@@ -967,21 +1065,16 @@ function go(roomId){
       if(saved.avatar)fbProf.avatar=saved.avatar;
       fb.set(fb.ref(fb.db,'profiles/'+safeName(myName)),fbProf);
     })();
-    // Clean stale presence entries
+    // Presence cleanup: only remove true orphans (no ts) or 24h+ old
     fb.get(fb.ref(fb.db,'presence')).then(function(snap){
       var now=Date.now();var pd=snap.val()||{};
-      Object.keys(pd).forEach(function(k){if(k!==myUID&&pd[k].ts&&(now-pd[k].ts)>300000)fb.remove(fb.ref(fb.db,'presence/'+k));});
+      Object.keys(pd).forEach(function(k){if(k===myUID)return;var p=pd[k];if(!p.ts||(now-p.ts)>86400000)fb.remove(fb.ref(fb.db,'presence/'+k));});
     }).catch(function(){});
-    // Smart user-list sync: only rebuild when actual adds/removes happen
-    var _lastUserKeys='';
+    // Live user list — Firebase onDisconnect keeps this accurate
     fb.onValue(fb.ref(fb.db,'rooms/'+roomId+'/users'),function(s){
       var ud=s.val()||{};
-      // Active keys = not stale
-      var now=Date.now();
-      var activeKeys=Object.keys(ud).filter(function(k){var u=ud[k];return !u.ts||(now-u.ts)<360000;}).sort().join(',');
-      // Always rebuild to catch camera/screen status changes, but stable enough
       buildUserList(ud);
-      // Update in-room header count with room users (not global presence)
+      // Update in-room header count
       var ct=countUsers(ud);
       var hc=document.getElementById('hdr-count');
       if(hc)hc.textContent=ct.u;
@@ -989,8 +1082,12 @@ function go(roomId){
     fb.onChildAdded(fb.ref(fb.db,'rooms/'+roomId+'/chat'),function(s){
       var msg=s.val()||{};renderMsg(msg,msg.userId===myUID);
     });
+    // Only process events that happened AFTER we joined (avoid replaying history)
+    var _joinedAt=Date.now();
     fb.onChildAdded(fb.ref(fb.db,'rooms/'+roomId+'/events'),function(s){
       var ev=s.val()||{};
+      // Ignore historical events (older than 3s before join) 
+      if(ev.ts&&(ev.ts<_joinedAt-3000))return;
       if(ev.type==='join')showJoinLeave(ev.name,true);
       else if(ev.type==='leave')showJoinLeave(ev.name,false);
     });
@@ -1508,11 +1605,8 @@ function fetchWeather(query){
 
 /* ══ USER LIST ══ */
 function buildUserList(ud){
-  // Filter out stale ghosts (ts > 6min old) — only count/show active users
-  var now=Date.now();
-  var activeKeys=Object.keys(ud).filter(function(k){
-    var u=ud[k];return !u.ts||(now-u.ts)<360000;
-  });
+  // Show ALL users Firebase gives us — onDisconnect handles dead entries
+  var activeKeys=Object.keys(ud).filter(function(k){return ud[k]&&ud[k].name;});
 
   var list=document.getElementById('users-list');list.innerHTML='';
   if(!activeKeys.length){
@@ -2768,6 +2862,217 @@ function veilSave(){
   },1500);
 }
 
+
+/* ══════════════════════════════════════════════════════════════
+   USERNAME CLAIMING — PIN-based name reservation
+   Firebase: /claimed/{safeName} -> { hash, claimedAt }
+   localStorage: pr_pin_{safeName} -> { hash }  (cached so no re-entry)
+   
+   Flow:
+   1. User types name → check Firebase if claimed
+   2. If unclaimed: show "🔓 Claim" tag → click opens claim modal
+   3. If claimed by YOU (hash matches localStorage): show "🔐 Mine"
+   4. If claimed by someone else: show "🔒 Taken" → must pick different name
+   5. On Enter/join: if claimed-by-other → block with message
+   ══════════════════════════════════════════════════════════════ */
+
+var _claimState={status:'unknown',name:'',hash:null}; // status: unknown|free|mine|taken
+
+async function pinHash(pin,salt){
+  var data=new TextEncoder().encode(pin+'::peerroom::'+salt);
+  var buf=await crypto.subtle.digest('SHA-256',data);
+  return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+
+function getStoredPin(sn){
+  try{return JSON.parse(localStorage.getItem('pr_pin_'+sn)||'null');}catch(e){return null;}
+}
+function storePin(sn,hash){
+  localStorage.setItem('pr_pin_'+sn,JSON.stringify({hash:hash,savedAt:Date.now()}));
+}
+
+// Check claim status of a name — updates _claimState + claim tag
+function checkClaimStatus(name){
+  var tag=document.getElementById('claim-tag');
+  if(!tag||!name||!window._fb){_claimState={status:'unknown',name:name};return;}
+  var sn=safeName(name);
+  if(!sn||sn==='anon'){tag.textContent='';tag.className='claim-tag';return;}
+  _claimState={status:'checking',name:name};
+  tag.textContent='checking…';tag.className='claim-tag';tag.onclick=null;
+
+  window._fb.get(window._fb.ref(window._fb.db,'claimed/'+sn)).then(function(snap){
+    var d=snap.val();
+    if(!d){
+      // Unclaimed — show "Claim it!" 
+      _claimState={status:'free',name:name,sn:sn};
+      tag.textContent='🔓 Claim this name';tag.className='claim-tag unclaimed';
+      tag.onclick=function(){openClaimModal('claim',name);};
+    } else {
+      // Check if it's mine via stored PIN
+      var stored=getStoredPin(sn);
+      if(stored&&stored.hash===d.hash){
+        _claimState={status:'mine',name:name,sn:sn,hash:d.hash};
+        tag.textContent='🔐 Your name ✓';tag.className='claim-tag mine';tag.onclick=null;
+        // Auto-load profile
+        var prof=getProfile(name);
+        if(prof)document.getElementById('name-in').value=name;
+      } else {
+        _claimState={status:'taken',name:name,sn:sn};
+        tag.textContent='🔒 Name taken';tag.className='claim-tag unclaimed';
+        tag.style.color='#ff4466';tag.style.borderColor='rgba(255,68,102,.35)';tag.style.background='rgba(255,68,102,.08)';
+        tag.onclick=function(){openClaimModal('unlock',name);};
+      }
+    }
+  }).catch(function(){
+    _claimState={status:'unknown',name:name};
+    tag.textContent='';tag.className='claim-tag';
+  });
+}
+
+function openClaimModal(mode,name){
+  var modal=document.getElementById('claim-modal');
+  var icon=document.getElementById('claim-modal-icon');
+  var title=document.getElementById('claim-modal-title');
+  var sub=document.getElementById('claim-modal-sub');
+  var badge=document.getElementById('claim-modal-name');
+  var err=document.getElementById('claim-error');
+  var confirmBtn=document.getElementById('claim-confirm-btn');
+
+  badge.textContent=name;err.textContent='';
+  // Clear pins
+  ['pin0','pin1','pin2','pin3'].forEach(function(id){document.getElementById(id).value='';});
+
+  if(mode==='claim'){
+    icon.textContent='🔐';
+    title.textContent='Claim "'+name+'"';
+    sub.innerHTML='Set a 4-digit PIN to reserve this username.<br/>Anyone who wants to use <strong>'+esc(name)+'</strong> will need this PIN.<br/><span style="color:rgba(255,255,255,.5)">No account needed — just remember your PIN!</span>';
+    confirmBtn.textContent='Claim name ✓';
+    confirmBtn.onclick=function(){doClaimName(name);};
+  } else {
+    icon.textContent='🔑';
+    title.textContent='Enter PIN for "'+name+'"';
+    sub.innerHTML='This name is claimed. Enter its PIN to use it.<br/><span style="color:rgba(255,255,255,.5)">Don\'t know the PIN? Choose a different name.</span>';
+    confirmBtn.textContent='Unlock →';
+    confirmBtn.onclick=function(){doUnlockName(name);};
+  }
+
+  modal.classList.add('open');
+  setTimeout(function(){document.getElementById('pin0').focus();},100);
+}
+
+function getPinValue(){
+  return ['pin0','pin1','pin2','pin3'].map(function(id){return document.getElementById(id).value;}).join('');
+}
+
+async function doClaimName(name){
+  var pin=getPinValue();
+  if(pin.length!==4||!/^\d{4}$/.test(pin)){
+    document.getElementById('claim-error').textContent='PIN must be exactly 4 digits';return;
+  }
+  var sn=safeName(name);
+  var hash=await pinHash(pin,sn);
+  // Double-check it's still free
+  var snap=await window._fb.get(window._fb.ref(window._fb.db,'claimed/'+sn));
+  if(snap.val()){document.getElementById('claim-error').textContent='Name was just claimed by someone else!';return;}
+  // Save
+  await window._fb.set(window._fb.ref(window._fb.db,'claimed/'+sn),{hash:hash,claimedAt:Date.now()});
+  storePin(sn,hash);
+  _claimState={status:'mine',name:name,sn:sn,hash:hash};
+  document.getElementById('claim-modal').classList.remove('open');
+  var tag=document.getElementById('claim-tag');
+  if(tag){tag.textContent='🔐 Your name ✓';tag.className='claim-tag mine';tag.onclick=null;}
+  // Proceed with entering the room if they were trying to join
+  if(_pendingGoRoom){var r=_pendingGoRoom;_pendingGoRoom=null;go(r);}
+}
+
+async function doUnlockName(name){
+  var pin=getPinValue();
+  if(pin.length!==4||!/^\d{4}$/.test(pin)){
+    document.getElementById('claim-error').textContent='PIN must be 4 digits';return;
+  }
+  var sn=safeName(name);
+  var snap=await window._fb.get(window._fb.ref(window._fb.db,'claimed/'+sn));
+  var d=snap.val();
+  if(!d){
+    // Was unclaimed while modal was open — just proceed
+    storePin(sn,await pinHash(pin,sn));
+    document.getElementById('claim-modal').classList.remove('open');
+    if(_pendingGoRoom){var r2=_pendingGoRoom;_pendingGoRoom=null;go(r2);}
+    return;
+  }
+  var hash=await pinHash(pin,sn);
+  if(hash===d.hash){
+    storePin(sn,hash);
+    _claimState={status:'mine',name:name,sn:sn,hash:hash};
+    document.getElementById('claim-modal').classList.remove('open');
+    var tag2=document.getElementById('claim-tag');
+    if(tag2){tag2.textContent='🔐 Your name ✓';tag2.className='claim-tag mine';tag2.onclick=null;}
+    if(_pendingGoRoom){var r3=_pendingGoRoom;_pendingGoRoom=null;go(r3);}
+  } else {
+    document.getElementById('claim-error').textContent='Wrong PIN — try again or choose a different name';
+    ['pin0','pin1','pin2','pin3'].forEach(function(id){document.getElementById(id).value='';});
+    document.getElementById('pin0').focus();
+  }
+}
+
+var _pendingGoRoom=null;
+
+function initClaimSystem(){
+  // PIN digit navigation
+  ['pin0','pin1','pin2','pin3'].forEach(function(id,i){
+    var el=document.getElementById(id);
+    el.addEventListener('input',function(){
+      this.value=this.value.replace(/[^0-9]/g,'').substring(0,1);
+      if(this.value&&i<3)document.getElementById('pin'+(i+1)).focus();
+      // Auto-submit when all 4 filled
+      if(getPinValue().length===4)document.getElementById('claim-confirm-btn').click();
+    });
+    el.addEventListener('keydown',function(e){
+      if(e.key==='Backspace'&&!this.value&&i>0)document.getElementById('pin'+(i-1)).focus();
+      if(e.key==='Enter')document.getElementById('claim-confirm-btn').click();
+    });
+    // Allow only digits on paste
+    el.addEventListener('paste',function(e){
+      e.preventDefault();
+      var text=(e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'');
+      text.split('').slice(0,4-i).forEach(function(ch,j){
+        var target=document.getElementById('pin'+(i+j));
+        if(target)target.value=ch;
+      });
+      var next=Math.min(3,i+text.length);
+      document.getElementById('pin'+next).focus();
+    });
+  });
+
+  document.getElementById('claim-skip-btn').addEventListener('click',function(){
+    document.getElementById('claim-modal').classList.remove('open');
+    if(_pendingGoRoom){var r=_pendingGoRoom;_pendingGoRoom=null;go(r);}
+  });
+
+  document.getElementById('claim-modal').addEventListener('click',function(e){
+    if(e.target===this)this.classList.remove('open');
+  });
+
+  // Watch name field for changes to update claim status
+  var _checkTimer=null;
+  var ni=document.getElementById('name-in');
+  ni.addEventListener('input',function(){
+    clearTimeout(_checkTimer);
+    var tag=document.getElementById('claim-tag');
+    if(tag){tag.textContent='';tag.className='claim-tag';}
+    _claimState={status:'unknown',name:this.value.trim()};
+    if(!this.value.trim())return;
+    _checkTimer=setTimeout(function(){
+      checkClaimStatus(ni.value.trim());
+    },600);
+  });
+
+  // Check on page load for the random pre-filled name
+  setTimeout(function(){
+    var v=document.getElementById('name-in').value.trim();
+    if(v)checkClaimStatus(v);
+  },1400);
+}
 /* ══ THEMES ══ */
 function initTheme(){
   var saved=JSON.parse(localStorage.getItem('pr_theme')||'{}');
@@ -2850,7 +3155,7 @@ function shiftHue(hex,deg){
 
 /* ══ INIT ══ */
 document.addEventListener('DOMContentLoaded',function(){
-  buildGrid();initResize();subscribeFB();initVidToolbar();initDraw();initStickers();initEmoji();initRadio();initSettingsTabs();initTheme();initGames();initProfiles();initVeil();
+  buildGrid();initResize();subscribeFB();initVidToolbar();initDraw();initStickers();initEmoji();initRadio();initSettingsTabs();initTheme();initGames();initProfiles();initVeil();initClaimSystem();
   document.getElementById('join-btn').addEventListener('click',function(){go(document.getElementById('room-in').value.trim().replace(/\s+/g,'-').toLowerCase()||'general');});
   document.getElementById('room-in').addEventListener('keydown',function(e){if(e.key==='Enter')go(this.value.trim().replace(/\s+/g,'-').toLowerCase()||'general');});
   document.getElementById('name-in').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('room-in').focus();});
@@ -2870,12 +3175,56 @@ document.addEventListener('DOMContentLoaded',function(){
     'TurboShark','FrogCore','GigaBrain','MysticTofu','LaserCat'];
   var rn=RNAMES[Math.floor(Math.random()*RNAMES.length)];
   var ni=document.getElementById('name-in');
-  ni.value=rn;ni.select();
-  ni.focus();
+  ni.value=rn;
+  // Flash the field to signal it's a suggestion, not locked in
+  ni.style.transition='box-shadow .3s';
+  setTimeout(function(){
+    ni.style.boxShadow='0 0 0 2px rgba(0,229,160,.5),0 0 18px rgba(0,229,160,.2)';
+    setTimeout(function(){ni.style.boxShadow='';},1400);
+  },600);
+  ni.select();ni.focus();
+  // Hide hint after user starts typing
+  ni.addEventListener('input',function(){
+    var h=document.getElementById('name-hint');
+    if(h)h.style.display='none';
+  },{once:true});
+  // Auto-load profile settings for recognized names
+  var _autoloadTimer=null;
+  ni.addEventListener('input',function(){
+    clearTimeout(_autoloadTimer);
+    var v=this.value.trim();
+    _autoloadTimer=setTimeout(function(){
+      if(!v)return;
+      var prof=getProfile(v);
+      if(prof){
+        // Apply saved color
+        if(prof.color&&!US.randColor){US.nameColor=prof.color;}
+      }
+    },800);
+  });
 });
 })();
 </script>
 
+
+<!-- USERNAME CLAIM / PIN MODAL -->
+<div id="claim-modal" class="claim-modal">
+  <div class="claim-box">
+    <div id="claim-modal-icon" style="font-size:32px;margin-bottom:6px">🔐</div>
+    <div class="claim-title" id="claim-modal-title">Claim this name</div>
+    <div class="claim-sub" id="claim-modal-sub">Set a 4-digit PIN to reserve this username.<br/>No one else can use it without your PIN.</div>
+    <div class="claim-name-badge" id="claim-modal-name"></div>
+    <div class="pin-row" id="pin-row">
+      <input class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" id="pin0" autocomplete="off"/>
+      <input class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" id="pin1" autocomplete="off"/>
+      <input class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" id="pin2" autocomplete="off"/>
+      <input class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" id="pin3" autocomplete="off"/>
+    </div>
+    <div class="claim-error" id="claim-error"></div>
+    <button class="claim-btn" id="claim-confirm-btn">Confirm PIN ✓</button>
+    <button class="claim-btn secondary" id="claim-skip-btn">Skip — enter without claiming</button>
+  </div>
+</div>
 
 <!-- MY PROFILE MODAL -->
 <div id="profile-modal" class="profile-modal">
