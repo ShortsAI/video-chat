@@ -551,6 +551,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
     <button class="vt" id="vt-radio">📻 Radio</button>
     <div class="vt-sep"></div>
     <button class="vt" id="vt-fs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>Fullscreen</button>
+    <button class="vt" id="vt-profile">👤 Profile</button>
     <button class="vt red vt-right" id="vt-leave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Leave</button>
     <div class="vt-sep"></div>
     <button class="vt" id="vt-game">🎮 Game</button>
@@ -634,7 +635,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
       <div class="chat-hdr">💬 Chat
         <div style="display:flex;gap:5px;align-items:center">
           <button id="rpg-tog-btn" style="background:rgba(153,51,255,.18);border:1px solid rgba(153,51,255,.45);border-radius:6px;color:#cc88ff;cursor:pointer;font-size:11px;padding:3px 8px;font-family:'Syne',sans-serif;font-weight:700">⚔️</button>
-          <button id="profile-btn" style="background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.3);border-radius:6px;color:var(--accent);cursor:pointer;font-size:12px;padding:3px 8px;font-family:'Syne',sans-serif;font-weight:700" title="My Profile">👤</button>
           <button id="settings-btn" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:14px">⚙️</button>
         </div>
       </div>
@@ -693,8 +693,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
     </div>
     <!-- Appearance -->
     <div class="set-pane on" id="set-appearance">
-      <label class="settings-label">Name color</label>
-      <input id="col-pick" type="color" style="width:100%;height:38px;margin-bottom:8px"/>
+      <label class="settings-label">Name &amp; bubble color</label>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <input id="col-pick" type="color" style="flex:1;height:38px;border:none;background:none;cursor:pointer;border-radius:6px"/>
+        <button id="rand-color-now-btn" style="font-size:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:var(--muted);cursor:pointer;padding:6px 12px;font-family:'DM Mono',monospace;white-space:nowrap" title="Pick a new random neon color">🎲 Random</button>
+      </div>
+      <label class="settings-label" style="display:flex;align-items:center;gap:8px;font-size:11px;margin-bottom:8px">
+        <input type="checkbox" id="rand-chk"/> New random color every session
+      </label>
       <label class="settings-label">Font</label>
       <select id="font-sel" style="width:100%;padding:8px;background:var(--surface2);border:1px solid var(--border);color:white;border-radius:6px;margin-bottom:6px">
         <option value="'Syne',sans-serif">Syne (default)</option>
@@ -1020,30 +1026,31 @@ function subscribeFB(){
    those are real users who have been in a room a long time. ── */
 function globalGhostSweep(fb){
   var now=Date.now();
-  var ORPHAN_AGE=86400000; // 24 hours — only true crash survivors get removed
+  // Sweep threshold: 15 minutes. Active users heartbeat every 60s so their
+  // ts will always be <2min old. Anyone with ts >15min has truly disconnected
+  // (onDisconnect either ran and removed them already, or it failed — either
+  // way they're gone). We still NEVER filter during countUsers/buildUserList —
+  // only this one-time startup sweep removes stale entries.
+  var SWEEP_AGE=900000; // 15 minutes
   function sweepUsers(path){
     fb.get(fb.ref(fb.db,path)).then(function(snap){
       var ud=snap.val()||{};
       Object.keys(ud).forEach(function(k){
         var u=ud[k];
-        // Only remove: no ts (old orphan) OR ts > 24 hours old
-        if(!u.ts||(now-u.ts)>ORPHAN_AGE){
+        if(!u.ts||(now-u.ts)>SWEEP_AGE){
           fb.remove(fb.ref(fb.db,path+'/'+k));
         }
       });
     }).catch(function(){});
   }
-  // Sweep preset rooms
   PID.concat(['test']).forEach(function(rid){sweepUsers('rooms/'+rid+'/users');});
-  // Sweep presence
   fb.get(fb.ref(fb.db,'presence')).then(function(snap){
     var pd=snap.val()||{};
     Object.keys(pd).forEach(function(k){
       var p=pd[k];
-      if(!p.ts||(now-p.ts)>ORPHAN_AGE)fb.remove(fb.ref(fb.db,'presence/'+k));
+      if(!p.ts||(now-p.ts)>SWEEP_AGE)fb.remove(fb.ref(fb.db,'presence/'+k));
     });
   }).catch(function(){});
-  // Sweep custom rooms
   fb.get(fb.ref(fb.db,'rooms')).then(function(snap){
     var all=snap.val()||{};
     Object.keys(all).forEach(function(rid){
@@ -1099,23 +1106,23 @@ function go(roomId){
         window._fb.set(window._fb.ref(window._fb.db,'presence/'+myUID+'/ts'),Date.now());
       }
     },60000);
-    // On-join cleanup: only remove true orphans (no ts) or 24h+ old entries
-    // NEVER remove entries with a fresh-ish ts — those are real long-session users
+    // On-join cleanup: remove entries with no ts or ts > 15 min old
     fb.get(fb.ref(fb.db,'rooms/'+roomId+'/users')).then(function(snap){
       var now=Date.now();var ud=snap.val()||{};
       Object.keys(ud).forEach(function(k){
         if(k===myUID)return;
         var u=ud[k];
-        if(!u.ts||(now-u.ts)>86400000){
+        if(!u.ts||(now-u.ts)>900000){
           fb.remove(fb.ref(fb.db,'rooms/'+roomId+'/users/'+k));
         }
       });
     }).catch(function(){});
     // Broadcast join
     fb.push(fb.ref(fb.db,'rooms/'+roomId+'/events'),{type:'join',name:myName,ts:Date.now()});
-    // Clean up leave on disconnect
-    var leaveRef=fb.push(fb.ref(fb.db,'rooms/'+roomId+'/events'));
-    fb.onDisconnect(leaveRef).set({type:'leave',name:myName,ts:Date.now()});
+    // NOTE: We do NOT pre-write a leave event via onDisconnect.
+    // That causes false "has left" messages for new joiners because the
+    // pre-written event timestamp looks "recent". Leave messages are only
+    // written on voluntary leave (Leave button / page unload).
     if(PID.indexOf(roomId)===-1&&roomId!=='test'){
       var mRef=fb.ref(fb.db,'rooms/'+roomId+'/meta');
       fb.get(mRef).then(function(s){if(!s.val())fb.set(mRef,{emoji:rE(),color:rC()});}).catch(function(){fb.set(fb.ref(fb.db,'rooms/'+roomId+'/meta'),{emoji:rE(),color:rC()});});
@@ -1131,10 +1138,10 @@ function go(roomId){
       if(saved.avatar)fbProf.avatar=saved.avatar;
       fb.set(fb.ref(fb.db,'profiles/'+safeName(myName)),fbProf);
     })();
-    // Presence cleanup: only remove true orphans (no ts) or 24h+ old
+    // Presence cleanup: remove entries with no ts or ts > 15 min old
     fb.get(fb.ref(fb.db,'presence')).then(function(snap){
       var now=Date.now();var pd=snap.val()||{};
-      Object.keys(pd).forEach(function(k){if(k===myUID)return;var p=pd[k];if(!p.ts||(now-p.ts)>86400000)fb.remove(fb.ref(fb.db,'presence/'+k));});
+      Object.keys(pd).forEach(function(k){if(k===myUID)return;var p=pd[k];if(!p.ts||(now-p.ts)>900000)fb.remove(fb.ref(fb.db,'presence/'+k));});
     }).catch(function(){});
     // Live user list — Firebase onDisconnect keeps this accurate
     fb.onValue(fb.ref(fb.db,'rooms/'+roomId+'/users'),function(s){
@@ -1145,11 +1152,15 @@ function go(roomId){
       var hc=document.getElementById('hdr-count');
       if(hc)hc.textContent=ct.u;
     });
+    // Set firstLoad false after a short delay post-subscription
+    // (gives time for initial history batch to render silently)
+    setTimeout(function(){firstLoad=false;},1200);
     fb.onChildAdded(fb.ref(fb.db,'rooms/'+roomId+'/chat'),function(s){
       var msg=s.val()||{};renderMsg(msg,msg.userId===myUID);
     });
     // Only process events that happened AFTER we joined (avoid replaying history)
     var _joinedAt=Date.now();
+    window._joinedAt=_joinedAt; // expose for renderMsg bloop check
     fb.onChildAdded(fb.ref(fb.db,'rooms/'+roomId+'/events'),function(s){
       var ev=s.val()||{};
       // Ignore historical events (older than 3s before join) 
@@ -1158,7 +1169,10 @@ function go(roomId){
       else if(ev.type==='leave')showJoinLeave(ev.name,false);
     });
     fb.onChildAdded(fb.ref(fb.db,'rooms/'+roomId+'/rpg'),function(s){
-      var ev=s.val()||{};renderRPGEvent(ev);
+      var ev=s.val()||{};
+      // Only show RPG events that happened after we joined — skip history replay
+      if(ev.time&&ev.time<_joinedAt)return;
+      renderRPGEvent(ev);
       if(ev.targetId===myUID&&ev.hpAfter!==undefined){myRPG.hp=ev.hpAfter;rpgSaveLocal();rpgUpdatePanel();}
     });
     window._myRoom=roomId;window._myUID=myUID;
@@ -1535,7 +1549,9 @@ function stopParty(){
 }
 
 /* ══ CHAT ══ */
-var firstLoad=true;setTimeout(function(){firstLoad=false;},3500);
+var firstLoad=true;
+// firstLoad turns false only after we've processed the initial chat history
+// We track join time and skip bloop for any message older than when we joined
 var IMG_RE=/https?:\/\/\S+\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?\S*)?$/i;
 function renderMsg(msg,isSelf){
   var c=document.getElementById('chat-msgs');
@@ -1576,7 +1592,8 @@ function renderMsg(msg,isSelf){
   }
   div.querySelectorAll('.msg-img').forEach(function(img){img.addEventListener('click',function(){document.getElementById('lb-img').src=img.src;document.getElementById('lightbox').classList.add('open');});img.addEventListener('error',function(){img.style.display='none';});});
   c.appendChild(div);c.scrollTop=c.scrollHeight;
-  if(!firstLoad)bloop(isSelf);
+  // Only bloop for NEW messages (after we joined), not historical chat replay
+  if(!firstLoad&&msg.time&&msg.time>window._joinedAt)bloop(isSelf);
 }
 function sysMsg(txt){var c=document.getElementById('chat-msgs'),d=document.createElement('div');d.className='sys-msg';d.textContent=txt;c.appendChild(d);c.scrollTop=c.scrollHeight;}
 
@@ -1730,6 +1747,17 @@ function openSettings(){
   document.getElementById('mute-all-chk').checked=(US.muteAll===true);
   document.getElementById('mute-radio-chk').checked=(US.muteRadio===true);
   document.getElementById('settings-modal').style.display='flex';
+  // Wire random color button each time settings opens
+  var rcBtn=document.getElementById('rand-color-now-btn');
+  if(rcBtn){
+    rcBtn.onclick=function(){
+      var newCol=RC[Math.floor(Math.random()*RC.length)];
+      document.getElementById('col-pick').value=newCol;
+      US.nameColor=newCol;US.randColor=false;
+      document.getElementById('rand-chk').checked=false;
+      localStorage.setItem('pr_settings',JSON.stringify(US));
+    };
+  }
 }
 function saveSettings(){
   US.nameColor=document.getElementById('col-pick').value;
@@ -1811,7 +1839,8 @@ function renderRPGEvent(ev){
   inner+='</div>';
   div.innerHTML=inner;
   c.appendChild(div);c.scrollTop=c.scrollHeight;
-  if(!firstLoad)bloop(isSelf);
+  // Only bloop for NEW messages (after we joined), not historical chat replay
+  if(!firstLoad&&msg.time&&msg.time>window._joinedAt)bloop(isSelf);
 }
 
 
@@ -2379,7 +2408,7 @@ function initProfiles(){
   }
 
   // Profile button in app
-  var pb=document.getElementById('profile-btn');
+  var pb=document.getElementById('vt-profile');
   if(pb)pb.addEventListener('click',openMyProfile);
 
   // Profile button on name input (lobby) — double-click name field
