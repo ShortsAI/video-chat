@@ -58,7 +58,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 .lbl-n{color:var(--accent)}.lbl-r{color:var(--accent2)}
 .entry-field input{flex:1;background:none;border:none;color:var(--text);font-family:'DM Mono',monospace;font-size:14px;outline:none;min-width:0}
 .entry-field input::placeholder{color:var(--muted)}
-.entry-btn{background:var(--accent2);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;padding:0 20px;cursor:pointer;white-space:nowrap;transition:opacity .15s,transform .15s;flex-shrink:0}
+.entry-btn{background:var(--accent2);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;padding:0 22px;cursor:pointer;white-space:nowrap;transition:opacity .15s,transform .15s;flex-shrink:0;align-self:flex-start;height:50px}
 .entry-btn:hover{opacity:.85;transform:translateY(-1px)}
 @media(max-width:600px){.entry-row{flex-direction:column}.entry-btn{padding:12px}}
 .sec-label{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;text-align:center}
@@ -379,13 +379,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 .veil-node-tooltip{position:absolute;background:rgba(5,8,16,.92);border:1px solid rgba(0,229,160,.3);border-radius:8px;padding:7px 10px;font-size:11px;font-family:'DM Mono',monospace;color:#fff;pointer-events:none;z-index:17;max-width:220px;word-break:break-word;display:none;box-shadow:0 0 14px rgba(0,229,160,.2)}
 
 
-/* Name field hint */
-.name-hint{font-size:10px;color:rgba(255,255,255,.4);font-family:'DM Mono',monospace;margin-top:4px;line-height:1.4;font-style:normal}
-.name-hint em{color:var(--accent);font-style:normal;font-weight:700}
-.name-field-wrap{flex:1.4!important}
-#name-in{font-size:16px!important;font-weight:700!important;color:var(--accent)!important}
-#name-in::placeholder{color:var(--muted)!important;font-weight:400!important;font-size:13px!important}
-
 
 /* ═══ USERNAME CLAIM / PIN ═══ */
 .claim-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(10px)}
@@ -401,12 +394,64 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
 .claim-btn.secondary{background:rgba(255,255,255,.08);color:var(--text);font-weight:600;font-size:12px;padding:8px 0}
 .claim-error{color:#ff4466;font-size:11px;font-family:'DM Mono',monospace;min-height:16px;margin-bottom:8px}
 .claim-name-badge{display:inline-block;background:rgba(0,229,160,.12);border:1px solid rgba(0,229,160,.3);border-radius:8px;padding:4px 14px;font-weight:800;color:var(--accent);font-family:'Syne',sans-serif;font-size:16px;margin-bottom:10px}
-/* Claim button next to name field */
-.claim-tag{display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:5px;cursor:pointer;transition:all .15s;user-select:none;font-family:'DM Mono',monospace}
-.claim-tag.unclaimed{color:#ff9900;border:1px solid rgba(255,153,0,.35);background:rgba(255,153,0,.08)}
-.claim-tag.unclaimed:hover{background:rgba(255,153,0,.18)}
-.claim-tag.claimed{color:var(--accent);border:1px solid rgba(0,229,160,.35);background:rgba(0,229,160,.08);cursor:default}
-.claim-tag.mine{color:#00aaff;border:1px solid rgba(0,170,255,.35);background:rgba(0,170,255,.08)}
+
+
+
+/* ═══ NEW ENTRY AREA ═══ */
+.entry-wrap{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin:0 auto 28px}
+@media(max-width:680px){.entry-wrap{flex-direction:column}.room-field,.entry-btn{width:100%}}
+
+/* Name block */
+.name-block{display:flex;flex-direction:column;gap:6px;flex:1;min-width:200px}
+
+/* Input shell — the actual text field + icons */
+.name-input-shell{position:relative;display:flex;align-items:center;background:rgba(255,255,255,.04);border:1.5px solid rgba(0,229,160,.25);border-radius:14px;transition:border-color .2s,box-shadow .2s}
+.name-input-shell:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,160,.12)}
+#name-in{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:'Syne',sans-serif;font-size:17px;font-weight:700;padding:13px 44px 13px 16px;min-width:0;letter-spacing:.01em}
+#name-in::placeholder{color:var(--muted);font-weight:400;font-size:14px;font-family:'DM Mono',monospace}
+
+/* Status icon (✓ / ✗ / spinner) inside the input */
+.name-status-icon{position:absolute;right:36px;top:50%;transform:translateY(-50%);font-size:16px;transition:opacity .2s;pointer-events:none;width:20px;text-align:center}
+
+/* Info button */
+.name-info-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;font-family:'DM Mono',monospace;user-select:none;flex-shrink:0}
+.name-info-btn:hover{background:rgba(0,229,160,.18);color:var(--accent)}
+
+/* Hover tooltip */
+.name-tooltip{display:none;position:absolute;top:calc(100% + 10px);left:0;z-index:9000;background:#0d1220;border:1px solid rgba(0,229,160,.25);border-radius:14px;padding:14px 16px;width:290px;box-shadow:0 8px 32px rgba(0,0,0,.6);pointer-events:none}
+.name-info-btn:hover ~ .name-tooltip,
+.name-info-btn.tt-open ~ .name-tooltip{display:block}
+.name-tooltip-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;letter-spacing:.04em}
+.name-tooltip-list{margin:0;padding:0 0 0 14px;list-style:disc}
+.name-tooltip-list li{font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.65);margin-bottom:5px;line-height:1.45}
+.name-tooltip-list li strong{color:rgba(255,255,255,.9)}
+
+/* Random name chips */
+.name-chips{display:flex;flex-wrap:wrap;gap:5px;min-height:26px}
+.name-chip{font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.55);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:3px 10px;cursor:pointer;transition:all .15s;white-space:nowrap;user-select:none}
+.name-chip:hover{color:var(--accent);border-color:rgba(0,229,160,.4);background:rgba(0,229,160,.07)}
+.name-chip.active{color:var(--accent);border-color:rgba(0,229,160,.5);background:rgba(0,229,160,.1);font-weight:700}
+.chips-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);align-self:center;white-space:nowrap}
+
+/* Status bar — available / taken / claimed */
+.name-status-bar{font-family:'DM Mono',monospace;font-size:11px;min-height:18px;display:flex;align-items:center;gap:6px;padding:0 2px;transition:opacity .2s}
+.nsb-free{color:#00e5a0}
+.nsb-taken{color:#ff4466}
+.nsb-mine{color:#00aaff}
+.nsb-checking{color:var(--muted)}
+.nsb-claim-btn{background:rgba(0,229,160,.12);border:1px solid rgba(0,229,160,.3);border-radius:6px;padding:2px 9px;color:var(--accent);font-family:'DM Mono',monospace;font-size:10px;font-weight:700;cursor:pointer;transition:all .15s;letter-spacing:.03em}
+.nsb-claim-btn:hover{background:rgba(0,229,160,.22);border-color:var(--accent)}
+.nsb-unlock-btn{background:rgba(255,68,102,.1);border:1px solid rgba(255,68,102,.3);border-radius:6px;padding:2px 9px;color:#ff6680;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;cursor:pointer;transition:all .15s}
+.nsb-unlock-btn:hover{background:rgba(255,68,102,.2)}
+
+/* Room field */
+.room-field{min-width:170px}
+
+/* Room field — override entry-field flex layout */
+.entry-field.room-field{flex-direction:column;align-items:stretch;padding:10px 14px;gap:4px;min-width:160px;flex:0.7}
+.entry-field.room-field label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent2);white-space:nowrap}
+.entry-field.room-field input{flex:1;background:none;border:none;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;outline:none;padding:2px 0}
+.entry-field.room-field input::placeholder{color:var(--muted)}
 
 </style>
 </head>
@@ -429,17 +474,38 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',
       <h1>Jump in.<br/>No signup needed.</h1>
       <p>Instant video &amp; text chat — pick a room or make your own</p>
     </div>
-    <div class="entry-row">
-      <div class="entry-field name-field-wrap">
-        <label class="lbl-n" for="name-in">
-          ✏️ Your name — <span style="font-weight:400;text-transform:none;letter-spacing:0;color:rgba(255,255,255,.5)">tap to change</span>
-          <span id="lobby-profile-link" style="font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;color:var(--accent2);font-size:9px;margin-left:6px" title="Create/edit your profile">✦ profile</span>
-          <span id="claim-tag" class="claim-tag" style="margin-left:6px"></span>
-        </label>
-        <input id="name-in" type="text" placeholder="Type your name here" maxlength="30" autocomplete="off"/>
-        <div class="name-hint" id="name-hint">☝️ This is a <em>suggestion</em> — type your real name or keep it!</div>
+    <!-- NAME + ROOM ENTRY -->
+    <div class="entry-wrap">
+      <!-- Left: Name block -->
+      <div class="name-block">
+        <div class="name-input-row">
+          <div class="name-input-shell" id="name-input-shell">
+            <input id="name-in" type="text" placeholder="Your name" maxlength="30" autocomplete="off" spellcheck="false"/>
+            <div class="name-status-icon" id="name-status-icon"></div>
+            <div class="name-info-btn" id="name-info-btn" title="About usernames">?</div>
+            <!-- Hover tooltip -->
+            <div class="name-tooltip" id="name-tooltip">
+              <div class="name-tooltip-title">Choosing your name</div>
+              <ul class="name-tooltip-list">
+                <li>A random name is suggested — click any chip below or type your own</li>
+                <li>Names are <strong>not reserved</strong> unless you claim them with a PIN</li>
+                <li>Claiming a name means only you can use it (4-digit PIN required)</li>
+                <li>No account needed — works without claiming too</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <!-- Random name chips -->
+        <div class="name-chips" id="name-chips"></div>
+        <!-- Status bar: shown after typing -->
+        <div class="name-status-bar" id="name-status-bar"></div>
       </div>
-      <div class="entry-field custom"><label class="lbl-r" for="room-in">Custom room (optional)</label><input id="room-in" type="text" placeholder="my-room-id" maxlength="40" autocomplete="off"/></div>
+      <!-- Middle: Room input -->
+      <div class="entry-field custom room-field">
+        <label class="lbl-r" for="room-in">Room <span style="font-weight:400;text-transform:none;opacity:.5">(optional)</span></label>
+        <input id="room-in" type="text" placeholder="my-room-id" maxlength="40" autocomplete="off"/>
+      </div>
+      <!-- Right: Enter button -->
       <button class="entry-btn" id="join-btn">Enter →</button>
     </div>
     <div class="test-strip" id="test-strip">
@@ -1001,7 +1067,7 @@ function renderOthers(list){
 /* ══ ENTER ROOM ══ */
 function requireName(){
   var n=document.getElementById('name-in').value.trim();
-  if(!n){var f=document.querySelector('.entry-field');f.style.boxShadow='0 0 0 2px #ff4466,0 0 18px rgba(255,68,102,.3)';document.getElementById('name-in').focus();setTimeout(function(){f.style.boxShadow='';},1800);return null;}
+  if(!n){var f=document.getElementById('name-input-shell');if(f){f.style.borderColor='#ff4466';f.style.boxShadow='0 0 0 2px rgba(255,68,102,.3)';setTimeout(function(){f.style.borderColor='';f.style.boxShadow='';},1800);}document.getElementById('name-in').focus();return null;}
   return n;
 }
 function go(roomId){
@@ -2319,8 +2385,7 @@ function initProfiles(){
   // Profile button on name input (lobby) — double-click name field
   var ni=document.getElementById('name-in');
   ni.addEventListener('dblclick',openMyProfile);
-  var lpl=document.getElementById('lobby-profile-link');
-  if(lpl)lpl.addEventListener('click',openMyProfile);
+  // lobby-profile-link removed in new UI — profile accessible via 👤 in-room
 
   document.getElementById('profile-close-btn').addEventListener('click',function(){modal.classList.remove('open');});
   document.getElementById('view-profile-close').addEventListener('click',function(){viewModal.classList.remove('open');});
@@ -2891,41 +2956,75 @@ function storePin(sn,hash){
   localStorage.setItem('pr_pin_'+sn,JSON.stringify({hash:hash,savedAt:Date.now()}));
 }
 
-// Check claim status of a name — updates _claimState + claim tag
+// Update the name status bar + status icon
+function setNameUI(status, name){
+  var bar=document.getElementById('name-status-bar');
+  var icon=document.getElementById('name-status-icon');
+  var shell=document.getElementById('name-input-shell');
+  if(!bar)return;
+  shell.style.borderColor='';
+  bar.innerHTML='';
+  icon.innerHTML='';
+
+  if(status==='checking'){
+    icon.innerHTML='<span style="font-size:11px;opacity:.5">…</span>';
+    bar.innerHTML='<span class="nsb-checking">Checking availability…</span>';
+    shell.style.borderColor='rgba(255,255,255,.2)';
+
+  }else if(status==='free'){
+    icon.innerHTML='<span style="color:#00e5a0">✓</span>';
+    var freeSpan=document.createElement('span');freeSpan.className='nsb-free';freeSpan.textContent='✓ Available';
+    var claimBtn=document.createElement('button');claimBtn.className='nsb-claim-btn';claimBtn.textContent='🔐 Claim this name';
+    claimBtn.addEventListener('click',function(){openClaimModal('claim',name);});
+    bar.appendChild(freeSpan);bar.appendChild(claimBtn);
+    shell.style.borderColor='rgba(0,229,160,.5)';
+
+  }else if(status==='mine'){
+    icon.innerHTML='<span style="color:#00aaff">🔐</span>';
+    bar.innerHTML='<span class="nsb-mine">🔐 Your claimed name ✓</span>';
+    shell.style.borderColor='rgba(0,170,255,.5)';
+
+  }else if(status==='taken'){
+    icon.innerHTML='<span style="color:#ff4466">✗</span>';
+    var takenSpan=document.createElement('span');takenSpan.className='nsb-taken';takenSpan.textContent='✗ Name is taken';
+    var unlockBtn=document.createElement('button');unlockBtn.className='nsb-unlock-btn';unlockBtn.textContent='Enter PIN to use it';
+    unlockBtn.addEventListener('click',function(){openClaimModal('unlock',name);});
+    bar.appendChild(takenSpan);bar.appendChild(unlockBtn);
+    shell.style.borderColor='rgba(255,68,102,.4)';
+  }
+}
+
+// Check claim status of a name — updates status bar
 function checkClaimStatus(name){
-  var tag=document.getElementById('claim-tag');
-  if(!tag||!name||!window._fb){_claimState={status:'unknown',name:name};return;}
+  if(!name||!window._fb){_claimState={status:'unknown',name:name};setNameUI('none',name);return;}
   var sn=safeName(name);
-  if(!sn||sn==='anon'){tag.textContent='';tag.className='claim-tag';return;}
+  if(!sn||sn==='anon'){setNameUI('none',name);return;}
+
   _claimState={status:'checking',name:name};
-  tag.textContent='checking…';tag.className='claim-tag';tag.onclick=null;
+  setNameUI('checking',name);
 
   window._fb.get(window._fb.ref(window._fb.db,'claimed/'+sn)).then(function(snap){
+    // Make sure user hasn't changed the name while we were fetching
+    var current=document.getElementById('name-in').value.trim();
+    if(current!==name)return;
+
     var d=snap.val();
     if(!d){
-      // Unclaimed — show "Claim it!" 
       _claimState={status:'free',name:name,sn:sn};
-      tag.textContent='🔓 Claim this name';tag.className='claim-tag unclaimed';
-      tag.onclick=function(){openClaimModal('claim',name);};
+      setNameUI('free',name);
     } else {
-      // Check if it's mine via stored PIN
       var stored=getStoredPin(sn);
       if(stored&&stored.hash===d.hash){
         _claimState={status:'mine',name:name,sn:sn,hash:d.hash};
-        tag.textContent='🔐 Your name ✓';tag.className='claim-tag mine';tag.onclick=null;
-        // Auto-load profile
-        var prof=getProfile(name);
-        if(prof)document.getElementById('name-in').value=name;
+        setNameUI('mine',name);
       } else {
         _claimState={status:'taken',name:name,sn:sn};
-        tag.textContent='🔒 Name taken';tag.className='claim-tag unclaimed';
-        tag.style.color='#ff4466';tag.style.borderColor='rgba(255,68,102,.35)';tag.style.background='rgba(255,68,102,.08)';
-        tag.onclick=function(){openClaimModal('unlock',name);};
+        setNameUI('taken',name);
       }
     }
   }).catch(function(){
     _claimState={status:'unknown',name:name};
-    tag.textContent='';tag.className='claim-tag';
+    setNameUI('none',name);
   });
 }
 
@@ -2979,9 +3078,7 @@ async function doClaimName(name){
   storePin(sn,hash);
   _claimState={status:'mine',name:name,sn:sn,hash:hash};
   document.getElementById('claim-modal').classList.remove('open');
-  var tag=document.getElementById('claim-tag');
-  if(tag){tag.textContent='🔐 Your name ✓';tag.className='claim-tag mine';tag.onclick=null;}
-  // Proceed with entering the room if they were trying to join
+  setNameUI('mine',name);
   if(_pendingGoRoom){var r=_pendingGoRoom;_pendingGoRoom=null;go(r);}
 }
 
@@ -2996,7 +3093,9 @@ async function doUnlockName(name){
   if(!d){
     // Was unclaimed while modal was open — just proceed
     storePin(sn,await pinHash(pin,sn));
+    _claimState={status:'mine',name:name,sn:sn};
     document.getElementById('claim-modal').classList.remove('open');
+    setNameUI('mine',name);
     if(_pendingGoRoom){var r2=_pendingGoRoom;_pendingGoRoom=null;go(r2);}
     return;
   }
@@ -3005,8 +3104,7 @@ async function doUnlockName(name){
     storePin(sn,hash);
     _claimState={status:'mine',name:name,sn:sn,hash:hash};
     document.getElementById('claim-modal').classList.remove('open');
-    var tag2=document.getElementById('claim-tag');
-    if(tag2){tag2.textContent='🔐 Your name ✓';tag2.className='claim-tag mine';tag2.onclick=null;}
+    setNameUI('mine',name);
     if(_pendingGoRoom){var r3=_pendingGoRoom;_pendingGoRoom=null;go(r3);}
   } else {
     document.getElementById('claim-error').textContent='Wrong PIN — try again or choose a different name';
@@ -3053,25 +3151,26 @@ function initClaimSystem(){
     if(e.target===this)this.classList.remove('open');
   });
 
-  // Watch name field for changes to update claim status
+  // Watch name field for changes — debounce 700ms then check
   var _checkTimer=null;
   var ni=document.getElementById('name-in');
   ni.addEventListener('input',function(){
     clearTimeout(_checkTimer);
-    var tag=document.getElementById('claim-tag');
-    if(tag){tag.textContent='';tag.className='claim-tag';}
-    _claimState={status:'unknown',name:this.value.trim()};
-    if(!this.value.trim())return;
+    var v=this.value.trim();
+    _claimState={status:'unknown',name:v};
+    if(!v){setNameUI('none','');return;}
+    // Show checking immediately so user sees reaction
     _checkTimer=setTimeout(function(){
-      checkClaimStatus(ni.value.trim());
-    },600);
+      if(document.getElementById('name-in').value.trim()===v)
+        checkClaimStatus(v);
+    },700);
   });
 
-  // Check on page load for the random pre-filled name
+  // Check on page load for the pre-filled name (wait for Firebase)
   setTimeout(function(){
     var v=document.getElementById('name-in').value.trim();
     if(v)checkClaimStatus(v);
-  },1400);
+  },1600);
 }
 /* ══ THEMES ══ */
 function initTheme(){
@@ -3166,42 +3265,65 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('close-set-btn').addEventListener('click',function(){document.getElementById('settings-modal').style.display='none';});
   document.addEventListener('click',function(){if(!AC)try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}},{once:true});
   var hash=location.hash.replace('#','').trim();if(hash)document.getElementById('room-in').value=hash;
-  // Random username pre-fill
+
+  // ── Random name chips ──
   var RNAMES=['CosmicFox','NeonRider','StarGazer','PixelWolf','ZapQueen','ThunderCat',
     'VoidWalker','CryptoKid','GlitchGuru','ArcadeAce','RetroZap','CyberPunk',
     'LunarDrift','QuantumBro','SolarFlare','NightOwl','StormBolt','ChromeWitch',
     'NebulaBro','SkullFire','PrismGhost','WarpZone','DarkMatter','BitCrusher',
     'VaporWave','PlasmaByte','LoFiKing','GlowUp','RadBuddha','NoodleArm',
     'TurboShark','FrogCore','GigaBrain','MysticTofu','LaserCat'];
-  var rn=RNAMES[Math.floor(Math.random()*RNAMES.length)];
+
+  // Pick 6 random chips to show (always different per load)
+  var shuffled=RNAMES.slice().sort(function(){return Math.random()-.5;});
+  var chipNames=shuffled.slice(0,6);
   var ni=document.getElementById('name-in');
+  var chipsEl=document.getElementById('name-chips');
+
+  // Build chips
+  if(chipsEl){
+    var lbl=document.createElement('span');lbl.className='chips-label';lbl.textContent='Try:';
+    chipsEl.appendChild(lbl);
+    chipNames.forEach(function(cn){
+      var chip=document.createElement('span');chip.className='name-chip';chip.textContent=cn;
+      chip.addEventListener('click',function(){
+        ni.value=cn;
+        // Mark active chip
+        chipsEl.querySelectorAll('.name-chip').forEach(function(c){c.classList.remove('active');});
+        chip.classList.add('active');
+        ni.dispatchEvent(new Event('input'));
+        ni.focus();
+      });
+      chipsEl.appendChild(chip);
+    });
+  }
+
+  // Pre-fill with one random name
+  var rn=chipNames[0]||RNAMES[0];
   ni.value=rn;
-  // Flash the field to signal it's a suggestion, not locked in
-  ni.style.transition='box-shadow .3s';
-  setTimeout(function(){
-    ni.style.boxShadow='0 0 0 2px rgba(0,229,160,.5),0 0 18px rgba(0,229,160,.2)';
-    setTimeout(function(){ni.style.boxShadow='';},1400);
-  },600);
+  // Mark first chip active
+  if(chipsEl){var fc=chipsEl.querySelector('.name-chip');if(fc)fc.classList.add('active');}
+
   ni.select();ni.focus();
-  // Hide hint after user starts typing
+
+  // Auto-load profile color for recognized names
   ni.addEventListener('input',function(){
-    var h=document.getElementById('name-hint');
-    if(h)h.style.display='none';
-  },{once:true});
-  // Auto-load profile settings for recognized names
-  var _autoloadTimer=null;
-  ni.addEventListener('input',function(){
-    clearTimeout(_autoloadTimer);
+    // Deactivate chips unless one matches
     var v=this.value.trim();
-    _autoloadTimer=setTimeout(function(){
-      if(!v)return;
-      var prof=getProfile(v);
-      if(prof){
-        // Apply saved color
-        if(prof.color&&!US.randColor){US.nameColor=prof.color;}
-      }
-    },800);
+    if(chipsEl)chipsEl.querySelectorAll('.name-chip').forEach(function(c){c.classList.toggle('active',c.textContent===v);});
+    // Apply saved color
+    if(v){var prof=getProfile(v);if(prof&&prof.color&&!US.randColor)US.nameColor=prof.color;}
   });
+
+  // Info button tooltip toggle (also works on hover via CSS)
+  var infoBtn=document.getElementById('name-info-btn');
+  if(infoBtn){
+    infoBtn.addEventListener('click',function(e){
+      e.stopPropagation();
+      this.classList.toggle('tt-open');
+    });
+    document.addEventListener('click',function(){if(infoBtn)infoBtn.classList.remove('tt-open');});
+  }
 });
 })();
 </script>
